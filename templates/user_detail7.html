@@ -1,0 +1,1340 @@
+{% extends "admin/page_ajour.html" %}
+
+{% block title %}Gestion des Utilisateurs - Hikvision{% endblock %}
+
+{% block page_header %}
+    <i class="fas fa-users"></i> Gestion des Utilisateurs
+{% endblock %}
+
+{% block head_extra %}
+<style>
+    .toolbar {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 12px 12px 0 0;
+    }
+
+    .toolbar-left, .toolbar-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .btn-add, .btn-delete, .btn-sync {
+        background: transparent;
+        color: var(--secondary-color);
+        border: 1px solid var(--border-color);
+        padding: 8px 16px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+    .btn-add:hover {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .btn-delete {
+        color: #dc3545;
+        opacity: 0.6;
+    }
+
+    .btn-delete:hover:not(:disabled) {
+        background: #dc3545;
+        color: white;
+        opacity: 1;
+        border-color: #dc3545;
+    }
+
+    .btn-delete:disabled {
+        cursor: not-allowed;
+    }
+
+    .btn-sync {
+        background: #2072f2;
+        color: white;
+        border-color: #2072f2;
+    }
+
+    .btn-sync:hover {
+        background: #034bbf;
+        border-color: #034bbf;
+    }
+
+    .search-box {
+        position: relative;
+        min-width: 250px;
+    }
+
+    .search-box input {
+        padding: 8px 35px 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        width: 100%;
+        background: white;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    .search-box i {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
+
+    .data-table thead {
+        background: var(--light-bg);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .data-table th {
+        padding: 14px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 13px;
+        color: #1a202c;
+        white-space: nowrap;
+    }
+
+    .data-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .data-table tbody tr:hover {
+        background: rgba(0, 188, 212, 0.05);
+    }
+
+    .checkbox-cell {
+        width: 40px;
+        text-align: center;
+    }
+
+    .checkbox-cell input[type="checkbox"] {
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+    }
+
+    .action-icons {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .action-icon {
+        cursor: pointer;
+        color: #666;
+        transition: color 0.2s;
+        font-size: 16px;
+    }
+
+    .action-icon:hover {
+        color: var(--primary-color);
+    }
+
+    .action-icon.delete:hover {
+        color: #dc3545;
+    }
+
+    .pagination-wrapper {
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 0 0 12px 12px;
+    }
+
+    .pagination-info {
+        color: #666;
+        font-size: 13px;
+    }
+
+    .pagination-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .page-btn {
+        padding: 6px 14px;
+        border: 1px solid var(--border-color);
+        background: white;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .page-btn:hover:not(:disabled) {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .page-btn.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .badge-number {
+        background: #e9ecef;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .user-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #e9ecef;
+        border: 2px solid var(--primary-color);
+        transition: transform 0.3s ease;
+    }
+
+    .user-avatar:hover {
+        transform: scale(1.1);
+    }
+
+    .no-photo-placeholder {
+        width: 50px;
+        height: 50px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--primary-color), #0097a7);
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 50%;
+        border: 2px solid var(--primary-color);
+    }
+
+    .user-info-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-details {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: #1a202c;
+    }
+
+    .user-meta {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .loading-overlay.show {
+        display: flex;
+    }
+
+    .loading-spinner {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        text-align: center;
+    }
+
+    .photo-method-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .photo-method-btn {
+        flex: 1;
+        padding: 10px;
+        border: 2px solid var(--border-color);
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: 500;
+    }
+
+    .photo-method-btn.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .photo-method-content {
+        display: none;
+    }
+
+    .photo-method-content.active {
+        display: block;
+    }
+
+    .camera-stream-container {
+        position: relative;
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid var(--primary-color);
+    }
+
+    .camera-stream {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .capture-btn {
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .captured-preview-img {
+        width: 150px;
+        height: 150px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 3px solid var(--primary-color);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.8); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .captured-label {
+        display: inline-block;
+        background: var(--primary-color);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <div class="toolbar-left">
+        <a href="/ajout_user7" class="btn-add">
+            <i class="fas fa-plus"></i> Ajouter
+        </a>
+        <button class="btn-delete" id="btnDelete" disabled>
+            <i class="fas fa-trash"></i> Supprimer
+        </button>
+        <button class="btn-sync" id="btnSync">
+            <i class="fas fa-sync-alt"></i> Synchroniser
+        </button>
+    </div>
+    <div class="toolbar-right">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Rechercher...">
+            <i class="fas fa-search"></i>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="checkbox-cell">
+                    <input type="checkbox" id="selectAll">
+                </th>
+                <th>Utilisateur</th>
+                <th>Employee ID</th>
+                <th>CIN</th>
+                <th>Type</th>
+                <th>Email</th>
+                <th>Téléphone</th>
+                <th>Adresse</th>
+                <th>Photo</th>
+                <th>Carte</th>
+                <th>N° Carte</th>
+                <th>Empreinte</th>
+                <th>ID Empreinte</th>
+                <th>Validité</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="userTableBody">
+            <tr>
+                <td colspan="15" class="text-center text-muted" style="padding: 40px;">
+                    Connectez-vous via les paramètres de connexion dans la sidebar
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="pagination-wrapper">
+    <div class="pagination-info">
+        Total <strong id="totalUsers">0</strong> utilisateurs | Par page 
+        <select id="itemsPerPage" style="border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 6px; background: white;">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+    </div>
+    <div class="pagination-controls">
+        <button class="page-btn" id="prevPage">← Précédent</button>
+        <button class="page-btn active" id="currentPage">1</button>
+        <button class="page-btn" id="nextPage">Suivant →</button>
+        <span style="margin: 0 10px; color: #666;">Page</span>
+        <input type="number" id="gotoPage" min="1" value="1" style="width: 60px; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px;">
+        <button class="page-btn" id="gotoBtn">Aller</button>
+    </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin fa-3x" style="color: var(--primary-color);"></i>
+        <p style="margin-top: 15px; color: #666;">Chargement...</p>
+    </div>
+</div>
+
+<!-- Modal User moved to parent template to avoid stacking-context issues -->
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ========================================
+// 🔧 VARIABLES GLOBALES
+// ========================================
+let allUsers = [];
+let filteredUsers = [];
+let currentPage = 1;
+let itemsPerPage = 20;
+const bsModal = new bootstrap.Modal(document.getElementById('userModal'));
+let esp32StreamInterval = null;
+let capturedPhotoBlob = null;
+
+// ========================================
+// 🔧 RÉCUPÉRATION DES PARAMÈTRES DE CONNEXION
+// ========================================
+async function getAuthParams() {
+    try {
+        // Méthode 1: Fonction globale de page_ajour.html
+        if (typeof window.getHikConnectionConfig === 'function') {
+            const config = window.getHikConnectionConfig();
+            return {
+                ip: config.ip,
+                user: config.username,
+                pass: config.password
+            };
+        }
+        
+        // Méthode 2: localStorage
+        const saved = localStorage.getItem('hikConnectionConfig');
+        if (saved) {
+            const config = JSON.parse(saved);
+            return {
+                ip: config.ip,
+                user: config.username,
+                pass: config.password
+            };
+        }
+        
+        return { ip: null, user: null, pass: null };
+    } catch(e) {
+        console.error('Erreur getAuthParams:', e);
+        return { ip: null, user: null, pass: null };
+    }
+}
+// ========================================
+// 📝 GESTION DU SUBMIT DU FORMULAIRE (Ajouter / Modifier)
+// ========================================
+document.getElementById('userForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const mode = document.getElementById('modal_mode').value || 'add';
+    const emp = document.getElementById('modal_employee_no').value.trim();
+    const name = document.getElementById('modal_name').value.trim();
+    const cin = document.getElementById('modal_cin').value.trim();
+    const email = document.getElementById('modal_email').value.trim();
+    const telephone = document.getElementById('modal_telephone').value.trim();
+    const address = document.getElementById('modal_address').value.trim();
+    const carteNumber = document.getElementById('modal_carte_number').value.trim();
+    const fingerprintId = document.getElementById('modal_fingerprint_id').value.trim();
+    const userType = document.getElementById('modal_user_type').value || 'normal';
+    const validDays = parseInt(document.getElementById('modal_valid_days').value) || 365;
+    const photoFile = document.getElementById('modal_photo') ? document.getElementById('modal_photo').files[0] : null;
+
+    if (!emp || !name) {
+        alert('Employee ID et Nom sont requis');
+        return;
+    }
+
+    const { ip, user, pass, port } = await getAuthParams();
+    if (!ip || !user || !pass) {
+        showNotification('⚠️ Configurez la connexion dans la sidebar', 'warning');
+        return;
+    }
+
+    showLoading();
+    try {
+        if (mode === 'add') {
+            const fd = new FormData();
+            fd.append('device_ip', ip);
+            fd.append('username', user);
+            fd.append('password', pass);
+            fd.append('employee_no', emp);
+            fd.append('name', name);
+            fd.append('cin', cin);
+            fd.append('email', email);
+            fd.append('telephone', telephone);
+            fd.append('address', address);
+            fd.append('carte_number', carteNumber);
+            fd.append('fingerprint_id', fingerprintId);
+            fd.append('user_type', userType);
+            fd.append('valid_days', String(validDays));
+            if (photoFile) fd.append('photos', photoFile);
+
+            const res = await fetch('/api/users/add', {
+                method: 'POST',
+                body: fd
+            });
+            const j = await res.json();
+            if (res.ok && j.status === 'success') {
+                showNotification('✅ Utilisateur créé', 'success');
+                // fermer modal et recharger
+                const bs = bootstrap.Modal.getInstance(document.getElementById('userModal'));
+                if (bs) bs.hide();
+                await loadUsers();
+            } else {
+                console.error('add user error', j);
+                alert('Échec création: ' + (j.message || JSON.stringify(j)));
+            }
+        } else {
+            // edit mode -> PUT /api/users/update with query params
+            const params = new URLSearchParams({
+                device_ip: ip,
+                username: user,
+                password: pass,
+                employee_no: emp,
+                name: name || '',
+                cin: cin || '',
+                email: email || '',
+                telephone: telephone || '',
+                address: address || '',
+                carte_number: carteNumber || '',
+                fingerprint_id: fingerprintId || '',
+                user_type: userType || '',
+                valid_days: String(validDays || 365)
+            });
+
+            const res = await fetch(`/api/users/update?${params.toString()}`, {
+                method: 'PUT'
+            });
+            const j = await res.json();
+            if (res.ok && j.status === 'success') {
+                // if photo provided, upload photo separately
+                if (photoFile) {
+                    const fd2 = new FormData();
+                    fd2.append('device_ip', ip);
+                    fd2.append('username', user);
+                    fd2.append('password', pass);
+                    fd2.append('employee_no', emp);
+                    fd2.append('photo', photoFile);
+                    const pres = await fetch('/api/users/upload-photo', {
+                        method: 'POST',
+                        body: fd2
+                    });
+                    const pj = await pres.json();
+                    if (!(pres.ok && pj.status === 'success')) {
+                        console.warn('Photo upload failed', pj);
+                    }
+                }
+
+                showNotification('✅ Utilisateur mis à jour', 'success');
+                const bs = bootstrap.Modal.getInstance(document.getElementById('userModal'));
+                if (bs) bs.hide();
+                await loadUsers();
+            } else {
+                console.error('update user error', j);
+                alert('Échec mise à jour: ' + (j.message || JSON.stringify(j)));
+            }
+        }
+    } catch (err) {
+        console.error('Erreur userForm submit', err);
+        alert('Erreur: ' + err.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+// ========================================
+// 🔔 NOTIFICATION
+// ========================================
+function showNotification(message, type = 'info') {
+    const oldNotif = document.querySelector('.auto-load-notification');
+    if (oldNotif) oldNotif.remove();
+    
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+    
+    const notif = document.createElement('div');
+    notif.className = 'auto-load-notification';
+    notif.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 15px 20px;
+        background: ${colors[type] || colors.info};
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        font-size: 14px;
+        font-weight: 500;
+        animation: slideInRight 0.3s ease;
+    `;
+    notif.textContent = message;
+    document.body.appendChild(notif);
+    
+    setTimeout(() => {
+        notif.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+    }, 3000);
+}
+
+// ========================================
+// 📦 FONCTIONS UTILITAIRES
+// ========================================
+function showLoading() {
+    document.getElementById('loadingOverlay').classList.add('show');
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+function escapeHtml(s) {
+    if (!s) return "";
+    return String(s).replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"
+    }[m]));
+}
+
+async function getPhotoForEmployee(employeeNo) {
+    try {
+        const res = await fetch(`/api/user_photo?employee_no=${encodeURIComponent(employeeNo)}`);
+        if (!res.ok) return null;
+        const j = await res.json();
+        return j.photo_url || null;
+    } catch (e) { 
+        return null; 
+    }
+}
+
+function createAvatarElement(photoUrl, name = '') {
+    if (photoUrl) {
+        const img = document.createElement('img');
+        img.className = 'user-avatar';
+        img.src = photoUrl;
+        img.alt = 'avatar';
+        img.onerror = function() {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'no-photo-placeholder';
+            placeholder.textContent = name ? name.charAt(0).toUpperCase() : '👤';
+            this.replaceWith(placeholder);
+        };
+        return img;
+    } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'no-photo-placeholder';
+        placeholder.textContent = name ? name.charAt(0).toUpperCase() : '👤';
+        return placeholder;
+    }
+}
+
+// ========================================
+// 📥 CHARGEMENT DES UTILISATEURS
+// ========================================
+async function loadUsers() {
+    const { ip, user, pass } = await getAuthParams();
+    
+    if (!ip || !user || !pass) {
+        console.error('❌ Paramètres manquants');
+        showNotification('⚠️ Configurez la connexion dans la sidebar', 'warning');
+        return;
+    }
+
+    showLoading();
+    
+    const url = `/api/hik_users_with_mongo?device_ip=${encodeURIComponent(ip)}&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
+    
+    try {
+        const res = await fetch(url);
+        if (!res.ok) {
+            let msg = `HTTP Error ${res.status}`;
+            try { 
+                const j = await res.json(); 
+                msg = j.error || j.message || msg; 
+            } catch(e){}
+            alert(msg);
+            hideLoading();
+            return;
+        }
+        
+        const data = await res.json();
+        allUsers = [];
+        
+        if (Array.isArray(data)) {
+            allUsers = data;
+        } else if (data && typeof data === "object") {
+            if (Array.isArray(data.users)) allUsers = data.users;
+            else if (Array.isArray(data.UserInfo)) allUsers = data.UserInfo;
+            else if (Array.isArray(data.UserInfoList)) allUsers = data.UserInfoList;
+        }
+
+        filteredUsers = [...allUsers];
+        currentPage = 1;
+        renderTable();
+        updatePagination();
+        hideLoading();
+        showNotification(`✅ ${allUsers.length} utilisateurs chargés`, 'success');
+    } catch (err) {
+        console.error("Erreur chargement:", err);
+        alert("❌ Erreur de connexion");
+        hideLoading();
+    }
+}
+
+// ========================================
+// 🎨 AFFICHAGE DU TABLEAU
+// ========================================
+async function renderTable() {
+    const tbody = document.getElementById("userTableBody");
+    tbody.innerHTML = "";
+
+    if (filteredUsers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center text-muted" style="padding: 40px;">Aucun utilisateur trouvé</td></tr>';
+        return;
+    }
+
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageUsers = filteredUsers.slice(start, end);
+
+    const photoPromises = pageUsers.map(u => {
+        const emp = u.employeeNo || u.employeeid || u.id || "";
+        return emp ? getPhotoForEmployee(emp) : Promise.resolve(null);
+    });
+    
+    const photoUrls = await Promise.all(photoPromises);
+
+    const rows = pageUsers.map((u, index) => {
+        const emp = u.employeeNo || u.employeeid || u.id || "";
+        const name = u.name ?? u.userName ?? "";
+        const cin = u.cin || "";
+        const email = u.email || "";
+        const telephone = u.telephone || "";
+        const address = u.address || u.adresse || "";
+        const carteNumber = u.carte_number || "";
+        const fingerprintId = u.fingerprint_id || "";
+        const photoUrl = photoUrls[index];
+        
+        const userType = u.userType ?? "User";
+        const begin = (u.Valid && u.Valid.beginTime) ? u.Valid.beginTime.split('T')[0] : "";
+        const end_time = (u.Valid && u.Valid.endTime) ? u.Valid.endTime.split('T')[0] : "";
+        const validPeriod = begin && end_time ? `${begin} ~ ${end_time}` : "N/A";
+        const faceNum = u.numOfFace ?? u.faceCount ?? 0;
+        const cardNum = u.numOfCard ?? u.cardCount ?? 0;
+        const fpNum = u.numOfFP ?? u.fpCount ?? 0;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td class="checkbox-cell">
+                <input type="checkbox" class="user-checkbox" data-emp="${encodeURIComponent(emp)}">
+            </td>
+            <td><div class="user-info-cell"></div></td>
+            <td>${escapeHtml(emp)}</td>
+            <td>${cin ? escapeHtml(cin) : '<span class="text-muted">-</span>'}</td>
+            <td>${escapeHtml(userType)}</td>
+            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">
+                ${email ? '<div><i class="fas fa-envelope"></i> ' + escapeHtml(email) + '</div>' : '<span class="text-muted">-</span>'}
+            </td>
+            <td>
+                ${telephone ? '<div><i class="fas fa-phone"></i> ' + escapeHtml(telephone) + '</div>' : '<span class="text-muted">-</span>'}
+            </td>
+            <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(address)}">
+                ${address ? '<div><i class="fas fa-map-marker-alt"></i> ' + escapeHtml(address) + '</div>' : '<span class="text-muted">-</span>'}
+            </td>
+            <td><span class="badge-number">${faceNum}</span></td>
+            <td><span class="badge-number">${cardNum}</span></td>
+            <td>${carteNumber ? escapeHtml(carteNumber) : '<span class="text-muted">-</span>'}</td>
+            <td><span class="badge-number">${fpNum}</span></td>
+            <td>${fingerprintId ? escapeHtml(fingerprintId) : '<span class="text-muted">-</span>'}</td>
+            <td style="font-size: 11px;">${escapeHtml(validPeriod)}</td>
+            <td>
+                <div class="action-icons">
+                    <i class="fas fa-edit action-icon edit-btn" 
+                    data-emp="${encodeURIComponent(emp)}" 
+                    data-name="${encodeURIComponent(name)}"
+                    data-cin="${encodeURIComponent(cin)}"
+                    data-email="${encodeURIComponent(email)}" 
+                    data-telephone="${encodeURIComponent(telephone)}" 
+                    data-address="${encodeURIComponent(address)}"
+                    data-carte="${encodeURIComponent(carteNumber)}"
+                    data-fingerprint="${encodeURIComponent(fingerprintId)}"
+                    data-type="${encodeURIComponent(userType)}" 
+                    data-photo="${encodeURIComponent(photoUrl || '')}" 
+                    title="Modifier"></i>
+                    <i class="fas fa-trash action-icon delete delete-single-btn" data-emp="${encodeURIComponent(emp)}" title="Supprimer"></i>
+                </div>
+            </td>
+        `;
+
+        const userInfoCell = tr.querySelector('.user-info-cell');
+        userInfoCell.appendChild(createAvatarElement(photoUrl, name));
+        const userDetails = document.createElement('div');
+        userDetails.className = 'user-details';
+        userDetails.innerHTML = `
+            <span class="user-name">${escapeHtml(name)}</span>
+            <span class="user-meta">${escapeHtml(emp)}</span>
+        `;
+        userInfoCell.appendChild(userDetails);
+
+        return tr;
+    });
+
+    tbody.append(...rows);
+    updateDeleteButton();
+}
+
+function updatePagination() {
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    document.getElementById('totalUsers').textContent = filteredUsers.length;
+    document.getElementById('currentPage').textContent = currentPage;
+    document.getElementById('gotoPage').value = currentPage;
+    document.getElementById('gotoPage').max = totalPages;
+    
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = currentPage >= totalPages;
+}
+
+function updateDeleteButton() {
+    const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
+    document.getElementById('btnDelete').disabled = checkedBoxes.length === 0;
+}
+
+// ========================================
+// 🗑️ SUPPRESSION MULTIPLE
+// ========================================
+document.getElementById('btnDelete').addEventListener('click', async () => {
+    const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
+    if (checkedBoxes.length === 0) return;
+    
+    const empNos = Array.from(checkedBoxes).map(cb => decodeURIComponent(cb.dataset.emp));
+    if (!confirm(`❌ Supprimer ${empNos.length} utilisateur(s) ?\n\n⚠️ Cette action est irréversible !`)) return;
+
+    const { ip, user, pass } = await getAuthParams();
+    if (!ip || !user || !pass) {
+        showNotification('⚠️ Paramètres de connexion manquants', 'warning');
+        return;
+    }
+
+    showLoading();
+    let success = 0;
+    let failed = 0;
+
+    for (const emp of empNos) {
+        try {
+            const params = new URLSearchParams({ 
+                device_ip: ip, 
+                username: user, 
+                password: pass, 
+                employee_no: emp 
+            });
+            
+            const res = await fetch(`/api/users/delete?${params.toString()}`, { 
+                method: "DELETE" 
+            });
+            
+            const j = await res.json();
+            
+            if (res.ok && j.status === 'success') {
+                success++;
+            } else {
+                failed++;
+            }
+        } catch (e) {
+            console.error(`Erreur suppression ${emp}:`, e);
+            failed++;
+        }
+    }
+
+    hideLoading();
+    alert(`✅ Supprimés: ${success}\n❌ Échecs: ${failed}`);
+    await loadUsers();
+});
+
+// ========================================
+// 🗑️ SUPPRESSION INDIVIDUELLE
+// ========================================
+document.getElementById('userTableBody').addEventListener('click', async (e) => {
+    if (e.target.classList.contains('delete-single-btn')) {
+        const emp = decodeURIComponent(e.target.dataset.emp || "");
+        if (!confirm(`❌ Supprimer l'utilisateur ${emp} ?\n\n⚠️ Cette action est irréversible !`)) return;
+
+        const { ip, user, pass } = await getAuthParams();
+        if (!ip || !user || !pass) {
+            showNotification('⚠️ Paramètres de connexion manquants', 'warning');
+            return;
+        }
+
+        showLoading();
+        try {
+            const params = new URLSearchParams({ 
+                device_ip: ip, 
+                username: user, 
+                password: pass, 
+                employee_no: emp 
+            });
+            
+            const res = await fetch(`/api/users/delete?${params.toString()}`, { 
+                method: "DELETE" 
+            });
+            
+            const j = await res.json();
+            hideLoading();
+            
+            if (res.ok && j.status === 'success') {
+                showNotification(`✅ Utilisateur ${emp} supprimé`, 'success');
+                await loadUsers();
+            } else {
+                alert("❌ Échec: " + (j.message || JSON.stringify(j.details)));
+            }
+        } catch (e) {
+            hideLoading();
+            alert("❌ Erreur: " + e.message);
+        }
+    }
+});
+
+// ========================================
+// ✏️ MODIFICATION
+// ========================================
+document.getElementById('userTableBody').addEventListener('click', (e) => {
+    if (e.target.classList.contains('edit-btn')) {
+        const emp = decodeURIComponent(e.target.dataset.emp || "");
+        const name = decodeURIComponent(e.target.dataset.name || "");
+        const cin = decodeURIComponent(e.target.dataset.cin || "");
+        const email = decodeURIComponent(e.target.dataset.email || "");
+        const telephone = decodeURIComponent(e.target.dataset.telephone || "");
+        const address = decodeURIComponent(e.target.dataset.address || "");
+        const carteNumber = decodeURIComponent(e.target.dataset.carte || "");
+        const fingerprintId = decodeURIComponent(e.target.dataset.fingerprint || "");
+        const userType = decodeURIComponent(e.target.dataset.type || "normal");
+        const photo = decodeURIComponent(e.target.dataset.photo || "");
+        openEditModal(emp, name, cin, email, telephone, address, carteNumber, fingerprintId, userType, 365, photo);
+    }
+});
+
+function openEditModal(employeeNo, name, cin, email, telephone, address, carteNumber, fingerprintId, userType = 'normal', validDays = 365, photoUrl = '') {
+    document.getElementById('modal_mode').value = 'edit';
+    document.getElementById('userModalTitle').textContent = 'Modifier Utilisateur';
+    document.getElementById('modal_employee_no').value = employeeNo || '';
+    document.getElementById('modal_employee_no').disabled = true;
+    document.getElementById('modal_name').value = name || '';
+    document.getElementById('modal_cin').value = cin || '';
+    document.getElementById('modal_email').value = email || '';
+    document.getElementById('modal_telephone').value = telephone || '';
+    document.getElementById('modal_address').value = address || '';
+    document.getElementById('modal_carte_number').value = carteNumber || '';
+    document.getElementById('modal_fingerprint_id').value = fingerprintId || '';
+    document.getElementById('modal_user_type').value = userType || 'normal';
+    document.getElementById('modal_valid_days').value = validDays || 365;
+
+    const previewContainer = document.getElementById('modal_preview_container');
+    if (photoUrl) {
+        previewContainer.innerHTML = `<img src="${photoUrl}" class="user-avatar" style="width:80px;height:80px;">`;
+    } else {
+        previewContainer.innerHTML = '<div class="no-photo-placeholder" style="width:80px;height:80px;font-size:32px;margin:0 auto;">👤</div>';
+    }
+
+    bsModal.show();
+}
+
+// ========================================
+// 🔄 SYNCHRONISATION
+// ========================================
+document.getElementById('btnSync').addEventListener('click', async () => {
+    const { ip, user, pass } = await getAuthParams();
+    if (!ip || !user || !pass) {
+        showNotification('⚠️ Paramètres de connexion manquants', 'warning');
+        return;
+    }
+    
+    if (!confirm('Synchroniser MongoDB ↔ Hikvision?\n\nCela va:\n- Ajouter les utilisateurs MongoDB vers Hikvision\n- Ajouter les utilisateurs Hikvision vers MongoDB')) {
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const params = new URLSearchParams({
+            device_ip: ip,
+            username: user,
+            password: pass,
+            direction: 'both'
+        });
+        
+        const res = await fetch(`/api/sync/full?${params.toString()}`, {
+            method: 'POST'
+        });
+        
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            const mongoToHik = data.results.mongodb_to_hikvision || {};
+            const hikToMongo = data.results.hikvision_to_mongodb || {};
+            
+            let msg = '✅ Synchronisation terminée!\n\n';
+            msg += `MongoDB → Hikvision: ${mongoToHik.synced || 0} synchronisés\n`;
+            msg += `Hikvision → MongoDB: ${hikToMongo.synced || 0} synchronisés\n`;
+            
+            if (mongoToHik.errors && mongoToHik.errors.length > 0) {
+                msg += `\n⚠️ Erreurs: ${mongoToHik.errors.length}`;
+            }
+            
+            alert(msg);
+            await loadUsers();
+        } else {
+            alert('❌ Échec de synchronisation: ' + data.message);
+        }
+    } catch (e) {
+        alert('❌ Erreur de synchronisation: ' + e.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+// ========================================
+// 🔍 RECHERCHE
+// ========================================
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    if (!query) {
+        filteredUsers = [...allUsers];
+    } else {
+        filteredUsers = allUsers.filter(u => {
+            const emp = String(u.employeeNo || u.employeeid || u.id || "").toLowerCase();
+            const name = String(u.name || u.userName || "").toLowerCase();
+            const email = String(u.email || "").toLowerCase();
+            return emp.includes(query) || name.includes(query) || email.includes(query);
+        });
+    }
+    currentPage = 1;
+    renderTable();
+    updatePagination();
+});
+
+// ========================================
+// ✅ SÉLECTION
+// ========================================
+document.getElementById('selectAll').addEventListener('change', (e) => {
+    document.querySelectorAll('.user-checkbox').forEach(cb => {
+        cb.checked = e.target.checked;
+    });
+    updateDeleteButton();
+});
+
+document.getElementById('userTableBody').addEventListener('change', (e) => {
+    if (e.target.classList.contains('user-checkbox')) {
+        updateDeleteButton();
+        const allCheckboxes = document.querySelectorAll('.user-checkbox');
+        const checkedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+        document.getElementById('selectAll').checked = allCheckboxes.length === checkedCheckboxes.length;
+    }
+});
+
+// ========================================
+// 📄 PAGINATION
+// ========================================
+document.getElementById('itemsPerPage').addEventListener('change', (e) => {
+    itemsPerPage = parseInt(e.target.value);
+    currentPage = 1;
+    renderTable();
+    updatePagination();
+});
+
+document.getElementById('prevPage').addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+        updatePagination();
+    }
+});
+
+document.getElementById('nextPage').addEventListener('click', () => {
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderTable();
+        updatePagination();
+    }
+});
+
+document.getElementById('gotoBtn').addEventListener('click', () => {
+    const page = parseInt(document.getElementById('gotoPage').value);
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        renderTable();
+        updatePagination();
+    }
+});
+
+// ========================================
+// 📸 MÉTHODES PHOTO (ESP32, Hikvision, File)
+// ========================================
+document.querySelectorAll('.photo-method-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.photo-method-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.photo-method-content').forEach(c => c.classList.remove('active'));
+        
+        this.classList.add('active');
+        const method = this.dataset.method;
+        document.querySelector(`.photo-method-content[data-method="${method}"]`).classList.add('active');
+        
+        if (method === 'esp32') {
+            startEsp32Stream();
+        } else {
+            stopEsp32Stream();
+        }
+    });
+});
+
+async function startEsp32Stream() {
+    try {
+        const res = await fetch('/get_ip');
+        const data = await res.json();
+        const esp32Url = `http://${data.ip}/shot.jpg`;
+        
+        stopEsp32Stream();
+        esp32StreamInterval = setInterval(() => {
+            document.getElementById('esp32Stream').src = `${esp32Url}?t=${Date.now()}`;
+        }, 500);
+    } catch(e) {
+        console.error('ESP32 stream error:', e);
+    }
+}
+
+function stopEsp32Stream() {
+    if (esp32StreamInterval) {
+        clearInterval(esp32StreamInterval);
+        esp32StreamInterval = null;
+    }
+}
+
+document.getElementById('captureEsp32').addEventListener('click', async function() {
+    const img = document.getElementById('esp32Stream');
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    
+    canvas.toBlob(blob => {
+        capturedPhotoBlob = blob;
+        const url = URL.createObjectURL(blob);
+        document.getElementById('modal_preview_container').innerHTML = `<img src="${url}" class="user-avatar" style="width:80px;height:80px;">`;
+        document.getElementById('esp32_captured_preview').innerHTML = `<img src="${url}" class="captured-preview-img"><div class="captured-label">✓ Capturé depuis ESP32</div>`;
+        alert('✅ Photo capturée depuis ESP32!');
+    }, 'image/jpeg', 0.9);
+});
+
+document.getElementById('captureHikvision').addEventListener('click', async function() {
+    try {
+        const canvas = document.createElement('canvas');
+        const img = document.getElementById('hikvisionStream');
+        canvas.width = img.naturalWidth || 640;
+        canvas.height = img.naturalHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        
+        canvas.toBlob(blob => {
+            if (blob) {
+                capturedPhotoBlob = blob;
+                const url = URL.createObjectURL(blob);
+                document.getElementById('modal_preview_container').innerHTML = `<img src="${url}" class="user-avatar" style="width:80px;height:80px;">`;
+                document.getElementById('hikvision_captured_preview').innerHTML = `<img src="${url}" class="captured-preview-img"><div class="captured-label">✓ Capturé depuis Hikvision</div>`;
+                alert('✅ Photo capturée depuis Hikvision!');
+            } else {
+                alert('❌ Échec de capture');
+            }
+        }, 'image/jpeg', 0.9);
+    } catch(e) {
+        alert('❌ Erreur: ' + e.message);
+    }
+});
+
+document.getElementById('modal_photo').addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    const previewContainer = document.getElementById('modal_preview_container');
+    if (!f) {
+        previewContainer.innerHTML = '<div class="no-photo-placeholder" style="width:80px;height:80px;font-size:32px;margin:0 auto;">👤</div>';
+        return;
+    }
+    capturedPhotoBlob = f;
+    const url = URL.createObjectURL(f);
+    previewContainer.innerHTML = `<img src="${url}" class="user-avatar" style="width:80px;height:80px;">`;
+});
+
+// ========================================
+// 🚀 CHARGEMENT AUTOMATIQUE
+// ========================================
+async function autoLoadUsers() {
+    const { ip, user, pass } = await getAuthParams();
+    if (ip && user && pass) {
+        clearTimeout(window.autoLoadTimer);
+        window.autoLoadTimer = setTimeout(() => loadUsers(), 500);
+    }
+}
+
+window.addEventListener('storage', function(e) {
+    if (e.key === 'hikConnectionConfig') {
+        autoLoadUsers();
+    }
+});
+
+window.addEventListener('connectionUpdated', function(e) {
+    autoLoadUsers();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => autoLoadUsers(), 800);
+});
+
+// ========================================
+// 🎨 ANIMATIONS CSS
+// ========================================
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(400px); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+
+console.log('🚀 Système initialisé');
+///////////////// AMÉLIORATION DE LA FONCTION getAuthParams /////////////////// 
+// Remplacer la fonction getAuthParams par :
+async function getAuthParams() {
+    try {
+        // Méthode 1: Récupérer depuis le serveur
+        const res = await fetch('/api/get_device_config');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.config) {
+                return {
+                    ip: data.config.ip,
+                    user: data.config.username,
+                    pass: data.config.password,
+                    port: data.config.port || 80
+                };
+            }
+        }
+        
+        // Méthode 2: Fonction globale
+        if (typeof window.getHikConnectionConfig === 'function') {
+            const config = window.getHikConnectionConfig();
+            return {
+                ip: config.ip,
+                user: config.username,
+                pass: config.password,
+                port: config.port || 80
+            };
+        }
+        
+        // Méthode 3: localStorage
+        const saved = localStorage.getItem('hikConnectionConfig');
+        if (saved) {
+            const config = JSON.parse(saved);
+            return {
+                ip: config.ip,
+                user: config.username,
+                pass: config.password,
+                port: config.port || 80
+            };
+        }
+        
+        return { ip: null, user: null, pass: null, port: 80 };
+    } catch(e) {
+        console.error('Erreur getAuthParams:', e);
+        return { ip: null, user: null, pass: null, port: 80 };
+    }
+}
+</script>
+{% endblock %}

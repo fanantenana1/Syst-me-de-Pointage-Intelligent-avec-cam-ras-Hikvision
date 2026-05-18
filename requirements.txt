@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+face_recognition
+opencv-python
+numpy
+requests
+pydantic
+python-multipart
+jinja2uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+opencv-python==4.8.1.78
+pymongo==4.6.0
+cloudinary==1.36.0
+python-dotenv==1.0.0
+Pillow==10.1.0
+

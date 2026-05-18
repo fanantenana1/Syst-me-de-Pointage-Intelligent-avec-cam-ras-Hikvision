@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Ajouter un utilisateur - Système de Sécurité Intelligent</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #e0e6ed;
+    }
+
+    .container {
+      max-width: 900px;
+      background-color: #1e2a38;
+      padding: 30px;
+      margin-top: 50px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 188, 212, 0.15);
+    }
+
+    h3 {
+      color: #00bcd4;
+    }
+
+    .form-label {
+      font-weight: 500;
+    }
+
+    .form-control, .form-select {
+      border-radius: 10px;
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: #00bcd4;
+      box-shadow: 0 0 0 0.2rem rgba(0, 188, 212, 0.25);
+    }
+
+    .btn-primary, .btn-outline-primary, .btn-outline-success {
+      border-radius: 8px;
+      font-weight: 500;
+    }
+
+    .btn-outline-primary:hover, .btn-outline-success:hover {
+      background-color: #00bcd4;
+      color: white;
+    }
+
+    .image-preview-container {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding: 10px;
+      border: 1px solid #495057;
+      border-radius: 10px;
+      background-color: #ffffff15;
+      scroll-behavior: smooth;
+    }
+
+    .image-preview-container img {
+      width: 120px;
+      height: 90px;
+      object-fit: cover;
+      margin-right: 10px;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      transition: transform 0.3s ease;
+    }
+
+    .image-preview-container img:hover {
+      transform: scale(1.05);
+      border-color: #00bcd4;
+    }
+
+    .alert-success {
+      background-color: #0d6efd22;
+      border: 1px solid #00bcd4;
+      color: #e0f7fa;
+    }
+
+    ::placeholder {
+      color: #6c757d;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h3 class="mb-4 text-center">🛡️ Ajouter un utilisateur au système</h3>
+
+    {% if message %}
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+      </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" action="/register">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Nom :</label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Prénom :</label>
+          <input type="text" name="prenom" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">CIN :</label>
+          <input type="text" name="cin" class="form-control" required placeholder="Ex : AB123456">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Email :</label>
+          <input type="email" name="email" class="form-control" placeholder="exemple@mail.com">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Téléphone :</label>
+          <input type="tel" name="telephone" class="form-control" placeholder="+261 32 00 000 00">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Adresse :</label>
+          <textarea name="adresse" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Genre :</label>
+          <select name="genre" class="form-select">
+            <option value="">Choisir...</option>
+            <option value="Homme">Homme</option>
+            <option value="Femme">Femme</option>
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Date de naissance :</label>
+          <input type="date" name="date_naissance" class="form-control">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Méthode de photo :</label>
+        <select class="form-select" id="photoChoice" onchange="handlePhotoChoice()" required>
+          <option value="">-- Choisir une option --</option>
+          <option value="file">📁 Parcourir depuis fichiers</option>
+          <option value="camera">📷 Capturer avec caméra Android</option>
+        </select>
+      </div>
+
+      <div class="mb-3 d-none" id="fileInputZone">
+        <label class="form-label">Photos :</label>
+        <input type="file" name="photos" id="photosInput" class="form-control" accept="image/*" multiple onchange="previewMultipleImages(event)">
+      </div>
+
+      <div class="mb-3 d-none" id="cameraZone">
+        <label class="form-label">📷 Capture depuis Android :</label>
+        <div class="d-flex flex-column align-items-center">
+          <img id="cameraPreview" src="" alt="Caméra Android" style="width:400px; border-radius:10px; border:2px solid #ced4da; margin-bottom:10px;">
+          <button type="button" class="btn btn-outline-primary" onclick="captureFromIPWebcam()">📸 Capturer une image</button>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Aperçu des images :</label>
+        <div class="image-preview-container" id="imagePreviewContainer"></div>
+      </div>
+
+      <div class="d-grid gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <a href="/controle" class="btn btn-outline-success">Revenir à la caméra</a>
+      </div>
+    </form>
+  </div>
+
+<!-- Scripts -->
+<script>
+  let ipWebcamURL = "";
+
+  async function fetchCameraURL() {
+    try {
+      const response = await fetch("/get_ip");
+      const data = await response.json();
+      ipWebcamURL = "http://" + data.ip + "/shot.jpg";
+      console.log("IP récupérée :", ipWebcamURL);
+    } catch (error) {
+      console.error("Erreur lors de la récupération de l'URL de la caméra :", error);
+    }
+  }
+
+  const photoChoice = document.getElementById("photoChoice");
+  const fileInputZone = document.getElementById("fileInputZone");
+  const cameraZone = document.getElementById("cameraZone");
+  const cameraPreview = document.getElementById("cameraPreview");
+  const previewContainer = document.getElementById("imagePreviewContainer");
+  const photosInput = document.getElementById("photosInput");
+
+  async function handlePhotoChoice() {
+    const choice = photoChoice.value;
+    fileInputZone.classList.add("d-none");
+    cameraZone.classList.add("d-none");
+
+    if (choice === "file") {
+      fileInputZone.classList.remove("d-none");
+    } else if (choice === "camera") {
+      cameraZone.classList.remove("d-none");
+      await fetchCameraURL();
+      cameraPreview.src = ipWebcamURL + "?rand=" + Math.random();
+      startCameraStream();
+    }
+  }
+
+  let cameraInterval;
+  function startCameraStream() {
+    clearInterval(cameraInterval);
+    cameraInterval = setInterval(() => {
+      cameraPreview.src = ipWebcamURL + "?rand=" + Math.random();
+    }, 500);
+  }
+
+  function captureFromIPWebcam() {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.src = ipWebcamURL + "?rand=" + Math.random();
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+
+      canvas.toBlob((blob) => {
+        const file = new File([blob], `capture_${Date.now()}.png`, { type: 'image/png' });
+        const dataTransfer = new DataTransfer();
+        for (let i = 0; i < photosInput.files.length; i++) {
+          dataTransfer.items.add(photosInput.files[i]);
+        }
+        dataTransfer.items.add(file);
+        photosInput.files = dataTransfer.files;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const previewImg = document.createElement('img');
+          previewImg.src = e.target.result;
+          previewContainer.appendChild(previewImg);
+        };
+        reader.readAsDataURL(file);
+      }, 'image/png');
+    };
+  }
+
+  function previewMultipleImages(event) {
+    previewContainer.innerHTML = "";
+    const files = event.target.files;
+    for (let i = 0; i < files.length; i++) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        previewContainer.appendChild(img);
+      };
+      reader.readAsDataURL(files[i]);
+    }
+  }
+
+  // ⚡ Lance automatiquement au chargement de la page
+  document.addEventListener("DOMContentLoaded", async () => {
+    await fetchCameraURL();
+    cameraPreview.src = ipWebcamURL + "?rand=" + Math.random();
+    startCameraStream();
+  });
+</script>
+
+
+</body>
+</html>

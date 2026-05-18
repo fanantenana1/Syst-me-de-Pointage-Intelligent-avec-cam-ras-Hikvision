@@ -1,0 +1,1035 @@
+{% extends "admin/page_ajour.html" %}
+
+{% block title %}Ajouter un utilisateur - Système Hikvision{% endblock %}
+
+{% block page_header %}
+  <i class="fas fa-user-plus"></i> Ajouter un utilisateur
+{% endblock %}
+
+{% block head_extra %}
+  <style>
+    .form-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--primary-color);
+    }
+
+    .section-header i {
+      font-size: 24px;
+      color: var(--primary-color);
+    }
+
+    .section-header h5 {
+      margin: 0;
+      color: #1a202c;
+      font-weight: 600;
+    }
+
+    .form-card {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid #e9ecef;
+      transition: all 0.3s ease;
+    }
+
+    .form-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 188, 212, 0.1);
+      border-color: var(--primary-color);
+    }
+
+    .form-label {
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .form-label i {
+      color: var(--primary-color);
+      font-size: 14px;
+    }
+
+    .form-control, .form-select {
+      border-radius: 8px;
+      border: 2px solid #e9ecef;
+      padding: 10px 14px;
+      transition: all 0.3s ease;
+      background-color: white;
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 0.2rem rgba(0, 188, 212, 0.15);
+      background-color: white;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-color), #0097a7);
+      border: none;
+      border-radius: 8px;
+      padding: 12px 32px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 188, 212, 0.4);
+    }
+
+    .btn-outline-primary, .btn-outline-success {
+      border: 2px solid;
+      border-radius: 8px;
+      padding: 10px 24px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-outline-primary {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .btn-outline-primary:hover {
+      background: var(--primary-color);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .btn-outline-success {
+      border-color: #28a745;
+      color: #28a745;
+    }
+
+    .btn-outline-success:hover {
+      background: #28a745;
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .alert-success {
+      background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
+      border: 2px solid #28a745;
+      border-radius: 10px;
+      color: #155724;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .method-choice-container {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 12px;
+      padding: 24px;
+      border: 2px solid #dee2e6;
+    }
+
+    .camera-type-selector {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .camera-type-btn {
+      padding: 16px;
+      border: 2px solid var(--primary-color);
+      background: white;
+      color: #495057;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .camera-type-btn i {
+      font-size: 32px;
+      color: var(--primary-color);
+      transition: all 0.3s ease;
+    }
+
+    .camera-type-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 16px rgba(0, 188, 212, 0.2);
+      border-color: #0097a7;
+    }
+
+    .camera-type-btn.active {
+      background: linear-gradient(135deg, var(--primary-color), #0097a7);
+      color: white;
+      box-shadow: 0 6px 16px rgba(0, 188, 212, 0.3);
+    }
+
+    .camera-type-btn.active i {
+      color: white;
+    }
+
+    .camera-container {
+      position: relative;
+      border: 3px solid var(--primary-color);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .camera-stream {
+      width: 100%;
+      height: auto;
+      display: block;
+      max-height: 200px;
+      object-fit: contain;
+    }
+
+    @media (max-width: 768px) {
+      .camera-stream {
+        max-height: 250px;
+      }
+    }
+
+    .image-preview-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px;
+      border: 2px dashed #dee2e6;
+      border-radius: 10px;
+      background: #f8f9fa;
+      min-height: 120px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .image-preview-container:empty::before {
+      content: '📷 Aucune image capturée';
+      color: #6c757d;
+      font-style: italic;
+    }
+
+    .image-preview-container img {
+      width: 150px;
+      height: 150px;
+      object-fit: cover;
+      border: 3px solid var(--primary-color);
+      border-radius: 10px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .image-preview-container img:hover {
+      transform: scale(1.05) rotate(2deg);
+      box-shadow: 0 8px 16px rgba(0, 188, 212, 0.3);
+    }
+
+    .capture-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .capture-btn i {
+      font-size: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .form-card {
+        padding: 16px;
+      }
+
+      .camera-type-selector {
+        grid-template-columns: 1fr;
+      }
+
+      .camera-stream {
+        min-height: 250px;
+      }
+
+      .image-preview-container img {
+        width: 100px;
+        height: 100px;
+      }
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="form-container">
+    {% if message %}
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle"></i> {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" id="userForm">
+      <!-- Section: Informations Personnelles -->
+      <div class="form-card">
+        <div class="section-header">
+          <i class="fas fa-id-card"></i>
+          <h5>Informations Personnelles</h5>
+        </div>
+        
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-hashtag"></i> Employee ID *
+            </label>
+            <input type="text" name="employee_no" class="form-control" required placeholder="Ex: EMP001">
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-user"></i> Nom Complet *
+            </label>
+            <input type="text" name="name" class="form-control" required placeholder="Jean Dupont">
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-id-badge"></i> CIN
+            </label>
+            <input type="text" name="cin" class="form-control" placeholder="Ex: 123456789012">
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-venus-mars"></i> Genre
+            </label>
+            <select name="genre" class="form-select">
+              <option value="">Choisir...</option>
+              <option value="Homme">Homme</option>
+              <option value="Femme">Femme</option>
+            </select>
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-birthday-cake"></i> Date de naissance
+            </label>
+            <input type="date" name="date_naissance" class="form-control">
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-calendar-check"></i> Jours de validité
+            </label>
+            <input type="number" name="valid_days" class="form-control" value="365" min="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Contact -->
+      <div class="form-card">
+        <div class="section-header">
+          <i class="fas fa-address-book"></i>
+          <h5>Informations de Contact</h5>
+        </div>
+        
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-envelope"></i> Email
+            </label>
+            <input type="email" name="email" class="form-control" placeholder="exemple@mail.com">
+          </div>
+          
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-phone"></i> Téléphone
+            </label>
+            <input type="tel" name="telephone" class="form-control" placeholder="+261 32 00 000 00">
+          </div>
+          
+          <div class="col-12">
+            <label class="form-label">
+              <i class="fas fa-map-marker-alt"></i> Adresse
+            </label>
+            <textarea name="address" class="form-control" rows="2" placeholder="Adresse complète"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Paramètres -->
+      <div class="form-card">
+        <div class="section-header">
+          <i class="fas fa-cog"></i>
+          <h5>Paramètres du Compte</h5>
+        </div>
+        
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-user-shield"></i> Type d'utilisateur
+            </label>
+            <select name="user_type" class="form-select">
+              <option value="normal">Normal</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-credit-card"></i> Numéro de carte
+            </label>
+            <input type="text" name="carte_number" class="form-control" placeholder="Ex: CARD001">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="fas fa-fingerprint"></i> ID Empreinte
+            </label>
+            <input type="text" name="fingerprint_id" class="form-control" placeholder="Ex: FP001">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Capture Photo -->
+      <div class="form-card method-choice-container">
+        <div class="section-header" style="border-color: #6c757d;">
+          <i class="fas fa-camera"></i>
+          <h5>Capture d'Image Faciale</h5>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">
+            <i class="fas fa-images"></i> Méthode de capture
+          </label>
+          <select class="form-select" id="photoChoice" required>
+            <option value="">-- Choisir une option --</option>
+            <option value="file">📁 Parcourir depuis fichiers</option>
+            <option value="camera">📷 Capturer avec caméra</option>
+          </select>
+        </div>
+
+        <!-- File Upload -->
+        <div class="d-none" id="fileInputZone">
+          <label class="form-label">
+            <i class="fas fa-file-upload"></i> Sélectionner des photos
+          </label>
+          <input type="file" name="photos" id="photosInput" class="form-control" accept="image/*" multiple>
+        </div>
+
+        <!-- Camera Capture -->
+        <div class="d-none" id="cameraZone">
+          <label class="form-label mb-3">
+            <i class="fas fa-video"></i> Sélectionner le type de caméra
+          </label>
+          
+          <div class="camera-type-selector">
+            <button type="button" class="camera-type-btn active" data-camera="esp32">
+              <i class="fas fa-microchip"></i>
+              <span>ESP32 Camera</span>
+              <small>Caméra IP ESP32</small>
+            </button>
+            <button type="button" class="camera-type-btn" data-camera="hikvision">
+              <i class="fas fa-video"></i>
+              <span>Hikvision RTSP</span>
+              <small>Caméra professionnelle</small>
+            </button>
+          </div>
+
+          <!-- ESP32 View -->
+          <div class="camera-view" id="esp32View">
+            <div class="camera-container">
+              <img id="esp32Preview" src="" alt="Caméra ESP32" class="camera-stream">
+            </div>
+            <button type="button" class="btn btn-primary capture-btn" onclick="captureFromCamera('esp32')">
+              <i class="fas fa-camera"></i> Capturer depuis ESP32
+            </button>
+          </div>
+
+          <!-- Hikvision View -->
+          <div class="camera-view d-none" id="hikvisionView">
+            <div class="camera-container">
+              <img id="hikvisionPreview" src="/video_feed_rtsp" alt="Caméra Hikvision" class="camera-stream">
+            </div>
+            <button type="button" class="btn btn-primary capture-btn" onclick="captureFromCamera('hikvision')">
+              <i class="fas fa-camera"></i> Capturer depuis Hikvision
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Section -->
+      <div class="form-card">
+        <div class="section-header">
+          <i class="fas fa-images"></i>
+          <h5>Aperçu des Images Capturées</h5>
+        </div>
+        <div class="image-preview-container" id="imagePreviewContainer"></div>
+      </div>
+
+      <!-- Submit Buttons -->
+      <div class="d-grid gap-3">
+        <button type="submit" class="btn btn-primary btn-lg">
+          <i class="fas fa-save"></i> Enregistrer l'utilisateur
+        </button>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <a href="/user_detail7" class="btn btn-outline-primary w-100">
+              <i class="fas fa-list"></i> Voir la liste
+            </a>
+          </div>
+          <div class="col-md-6">
+            <a href="/controle" class="btn btn-outline-success w-100">
+              <i class="fas fa-video"></i> Revenir à la caméra
+            </a>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  let ipWebcamURL = "";
+  let esp32StreamInterval = null;
+  let capturedFiles = []; // Stocker les fichiers capturés
+  
+  // ========================================
+  // 🔧 RÉCUPÉRATION DES PARAMÈTRES DE CONNEXION
+  // ========================================
+  function getConnectionConfig() {
+    try {
+      // Méthode 1: Fonction globale de page_ajour.html
+      if (typeof window.getHikConnectionConfig === 'function') {
+        const config = window.getHikConnectionConfig();
+        console.log('✅ Config depuis page_ajour.html:', {
+          ip: config.ip,
+          username: config.username,
+          password: '***'
+        });
+        return {
+          device_ip: config.ip,
+          username: config.username,
+          password: config.password,
+          port: config.port || 80
+        };
+      }
+      
+      // Méthode 2: localStorage
+      const saved = localStorage.getItem('hikConnectionConfig');
+      if (saved) {
+        const config = JSON.parse(saved);
+        console.log('✅ Config depuis localStorage:', {
+          ip: config.ip,
+          username: config.username,
+          password: '***'
+        });
+        return {
+          device_ip: config.ip,
+          username: config.username,
+          password: config.password,
+          port: config.port || 80
+        };
+      }
+      
+      console.error('❌ Aucune configuration trouvée');
+      return null;
+    } catch(e) {
+      console.error('❌ Erreur getConnectionConfig:', e);
+      return null;
+    }
+  }
+
+  // ========================================
+  // 📷 RÉCUPÉRATION URL ESP32
+  // ========================================
+  async function fetchCameraURL() {
+    try {
+      // Première tentative : endpoint serveur /get_ip (si présent)
+      try {
+        const response = await fetch("/get_ip");
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.ip) {
+            ipWebcamURL = "http://" + data.ip + "/shot.jpg";
+            console.log("✅ IP ESP32 récupérée depuis /get_ip :", ipWebcamURL);
+            return;
+          }
+        }
+      } catch (err) {
+        console.debug('/get_ip non disponible ou erreur:', err);
+      }
+
+      // Deuxième tentative : utiliser la configuration de connexion (sidebar)
+      const cfg = getConnectionConfig();
+      if (cfg && cfg.device_ip) {
+        ipWebcamURL = "http://" + cfg.device_ip + "/shot.jpg";
+        console.log("✅ IP ESP32 construite depuis la configuration :", ipWebcamURL);
+        return;
+      }
+
+      console.error("❌ Aucune IP ESP32 trouvée (ni /get_ip ni configuration)");
+    } catch (error) {
+      console.error("❌ Erreur récupération URL ESP32:", error);
+    }
+  }
+
+  const photoChoice = document.getElementById("photoChoice");
+  const fileInputZone = document.getElementById("fileInputZone");
+  const cameraZone = document.getElementById("cameraZone");
+  const esp32Preview = document.getElementById("esp32Preview");
+  const hikvisionPreview = document.getElementById("hikvisionPreview");
+  const previewContainer = document.getElementById("imagePreviewContainer");
+  const photosInput = document.getElementById("photosInput");
+
+  // ------ Attacher les écouteurs manquants ------
+  // Quand l'utilisateur change la méthode (fichier / caméra)
+  if (photoChoice) {
+    photoChoice.addEventListener('change', handlePhotoChoice);
+  }
+
+  // Quand l'utilisateur sélectionne des fichiers
+  if (photosInput) {
+    photosInput.addEventListener('change', previewMultipleImages);
+  }
+
+  // ========================================
+  // 🎨 GESTION DE L'APERÇU DES IMAGES
+  // ========================================
+  function addImageToPreview(imageUrl, fileName) {
+    const imgWrapper = document.createElement('div');
+    imgWrapper.style.cssText = 'position:relative; display:inline-block; margin-right:10px;';
+    
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.style.cssText = 'width:120px; height:90px; object-fit:cover; border:2px solid #dee2e6; border-radius:8px;';
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = '❌';
+    deleteBtn.type = 'button';
+    deleteBtn.style.cssText = 'position:absolute; top:-5px; right:-5px; background:red; color:white; border:none; border-radius:50%; width:25px; height:25px; cursor:pointer; font-size:12px;';
+    deleteBtn.onclick = function() {
+      // Retirer de l'aperçu
+      imgWrapper.remove();
+      
+      // Retirer du tableau capturedFiles
+      const index = capturedFiles.findIndex(f => f.name === fileName);
+      if (index > -1) {
+        capturedFiles.splice(index, 1);
+      }
+      
+      console.log('🗑️ Image supprimée:', fileName);
+      console.log('📋 Fichiers restants:', capturedFiles.length);
+    };
+    
+    imgWrapper.appendChild(img);
+    imgWrapper.appendChild(deleteBtn);
+    previewContainer.appendChild(imgWrapper);
+  }
+
+  function clearPreview() {
+    previewContainer.innerHTML = "";
+    capturedFiles = [];
+  }
+
+  // ========================================
+  // 🔄 GESTION DU CHOIX DE MÉTHODE PHOTO
+  // ========================================
+  async function handlePhotoChoice() {
+    const choice = photoChoice.value;
+    fileInputZone.classList.add("d-none");
+    cameraZone.classList.add("d-none");
+    clearPreview();
+
+    if (choice === "file") {
+      fileInputZone.classList.remove("d-none");
+      console.log('📁 Mode: Upload fichier');
+    } else if (choice === "camera") {
+      cameraZone.classList.remove("d-none");
+      await fetchCameraURL();
+      
+      // Start ESP32 stream by default
+      console.log('📷 Mode: Capture caméra');
+      document.querySelector('.camera-type-btn[data-camera="esp32"]').click();
+    }
+  }
+
+  // ========================================
+  // 📹 SÉLECTION TYPE DE CAMÉRA
+  // ========================================
+  document.querySelectorAll('.camera-type-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      // Remove active from all buttons
+      document.querySelectorAll('.camera-type-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+
+      const cameraType = this.dataset.camera;     
+      // Hide all camera views
+      document.getElementById('esp32View').classList.add('d-none');
+      document.getElementById('hikvisionView').classList.add('d-none');
+
+      // Show selected camera view
+      if (cameraType === 'esp32') {
+        document.getElementById('esp32View').classList.remove('d-none');
+        startEsp32Stream();
+        console.log('📱 Caméra ESP32 activée');
+      } else if (cameraType === 'hikvision') {
+        document.getElementById('hikvisionView').classList.remove('d-none');
+        stopEsp32Stream();
+        console.log('🎥 Caméra Hikvision activée');
+      }
+    });
+  });
+
+  // ========================================
+  // 📡 STREAM ESP32
+  // ========================================
+  function startEsp32Stream() {
+    stopEsp32Stream();
+    
+    if (!ipWebcamURL) {
+      console.error('❌ URL ESP32 non disponible');
+      alert('⚠️ URL ESP32 non configurée. Vérifiez /get_ip');
+      return;
+    }
+    
+    console.log('🔄 Démarrage stream ESP32...');
+    esp32StreamInterval = setInterval(() => {
+      esp32Preview.src = ipWebcamURL + "?rand=" + Math.random();
+    }, 500);
+  }
+
+  function stopEsp32Stream() {
+    if (esp32StreamInterval) {
+      clearInterval(esp32StreamInterval);
+      esp32StreamInterval = null;
+      console.log('⏸️ Stream ESP32 arrêté');
+    }
+  }
+
+  // ========================================
+  // 📸 CAPTURE DEPUIS CAMÉRA (ESP32 ou Hikvision)
+  // ========================================
+  function captureFromCamera(cameraType) {
+    console.log(`📸 Tentative de capture depuis ${cameraType}...`);
+    
+    let sourceImg;
+    
+    if (cameraType === 'esp32') {
+      sourceImg = esp32Preview;
+      console.log('ESP32 Preview src:', sourceImg.src);
+      console.log('ESP32 naturalWidth:', sourceImg.naturalWidth);
+      console.log('ESP32 naturalHeight:', sourceImg.naturalHeight);
+    } else if (cameraType === 'hikvision') {
+      sourceImg = hikvisionPreview;
+      console.log('Hikvision Preview src:', sourceImg.src);
+      console.log('Hikvision naturalWidth:', sourceImg.naturalWidth);
+      console.log('Hikvision naturalHeight:', sourceImg.naturalHeight);
+    }
+
+    if (!sourceImg || !sourceImg.src) {
+      alert('❌ Source caméra non disponible. Attendez le chargement de la vidéo.');
+      return;
+    }
+
+    // Vérifier si l'image est chargée
+    if (sourceImg.naturalWidth === 0 || sourceImg.naturalHeight === 0) {
+      alert('⚠️ Image pas encore chargée. Attendez quelques secondes et réessayez.');
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = sourceImg.naturalWidth;
+    canvas.height = sourceImg.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    
+    console.log(`Canvas dimensions: ${canvas.width}x${canvas.height}`);
+    
+    try {
+      // Dessiner l'image sur le canvas
+      ctx.drawImage(sourceImg, 0, 0, canvas.width, canvas.height);
+
+      // Convertir en blob
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          alert('❌ Erreur lors de la création du blob');
+          console.error('Blob creation failed');
+          return;
+        }
+
+        console.log('✅ Blob créé:', blob.size, 'bytes');
+
+        // Créer un fichier
+        const timestamp = Date.now();
+        const fileName = `capture_${cameraType}_${timestamp}.jpg`;
+        const file = new File([blob], fileName, { type: 'image/jpeg' });
+        
+        console.log('✅ Fichier créé:', fileName, file.size, 'bytes');
+
+        // Ajouter au tableau des fichiers capturés
+        capturedFiles.push(file);
+        console.log('📋 Total fichiers capturés:', capturedFiles.length);
+
+        // Créer l'aperçu
+        const imageUrl = URL.createObjectURL(blob);
+        addImageToPreview(imageUrl, fileName);
+
+        alert(`✅ Photo capturée depuis ${cameraType === 'esp32' ? 'ESP32' : 'Hikvision'}!\n\nTotal photos: ${capturedFiles.length}`);
+      }, 'image/jpeg', 0.9);
+      
+    } catch (error) {
+      console.error('❌ Erreur capture:', error);
+      alert('❌ Erreur lors de la capture: ' + error.message);
+    }
+  }
+
+  // ========================================
+  // 📁 APERÇU FICHIERS UPLOADÉS
+  // ========================================
+  function previewMultipleImages(event) {
+    clearPreview();
+    
+    const files = event.target.files;
+    console.log('📁 Fichiers sélectionnés:', files.length);
+    
+    if (files.length === 0) {
+      return;
+    }
+
+    // Ajouter les fichiers au tableau
+    capturedFiles = Array.from(files);
+    
+    // Créer les aperçus
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        addImageToPreview(e.target.result, file.name);
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  }
+
+  // ========================================
+  // 📤 SOUMISSION DU FORMULAIRE
+  // ========================================
+  document.querySelector('form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    console.log('📤 Soumission du formulaire...');
+    
+    // Vérifier la configuration
+    const config = getConnectionConfig();
+    
+    if (!config || !config.device_ip || !config.username || !config.password) {
+      alert('❌ Configuration de connexion manquante!\n\n' +
+            '⚠️ Configurez la connexion dans la sidebar:\n' +
+            '1. Cliquez sur "Connexion"\n' +
+            '2. Remplissez IP, Username, Password\n' +
+            '3. Cliquez sur "Sauver"');
+      return;
+    }
+    
+    // Créer FormData
+    const formData = new FormData(this);
+    
+    // Supprimer l'ancien champ photos
+    formData.delete('photos');
+    
+    // Ajouter les fichiers capturés ou uploadés
+    const photoMethod = photoChoice.value;
+    
+    if (photoMethod === 'camera') {
+      // Utiliser les fichiers capturés
+      console.log('📷 Ajout des photos capturées:', capturedFiles.length);
+      
+      if (capturedFiles.length === 0) {
+        alert('⚠️ Aucune photo capturée!\n\nCapturez au moins une photo avec la caméra.');
+        return;
+      }
+      
+      capturedFiles.forEach((file, index) => {
+        formData.append('photos', file);
+        console.log(`  ${index + 1}. ${file.name} (${file.size} bytes)`);
+      });
+      
+    } else if (photoMethod === 'file') {
+      // Utiliser les fichiers du input
+      const files = photosInput.files;
+      console.log('📁 Ajout des fichiers uploadés:', files.length);
+      
+      if (files.length === 0) {
+        alert('⚠️ Aucune photo sélectionnée!\n\nChoisissez au moins une photo.');
+        return;
+      }
+      
+      for (let i = 0; i < files.length; i++) {
+        formData.append('photos', files[i]);
+        console.log(`  ${i + 1}. ${files[i].name} (${files[i].size} bytes)`);
+      }
+    } else {
+      alert('⚠️ Veuillez choisir une méthode de photo!');
+      return;
+    }
+    
+    // Ajouter les paramètres de configuration
+    formData.append('device_ip', config.device_ip);
+    formData.append('username', config.username);
+    formData.append('password', config.password);
+    formData.append('port', config.port);
+    
+    console.log('🔧 Configuration:', {
+      device_ip: config.device_ip,
+      username: config.username,
+      password: '***',
+      port: config.port
+    });
+    
+    try {
+      console.log('🌐 Envoi vers /api/users/add...');
+      
+      const response = await fetch('/api/users/add', {
+        method: 'POST',
+        body: formData
+      });
+      
+      console.log('📥 Statut réponse:', response.status);
+      
+      const data = await response.json();
+      console.log('📥 Données reçues:', data);
+      
+      if (data.status === 'success') {
+        alert(`✅ ${data.message}\n\n` +
+              `📋 Détails:\n` +
+              `• MongoDB: ${data.details.mongodb_created ? '✅ Créé' : '❌ Échec'}\n` +
+              `• Hikvision: ${data.details.hikvision_created ? '✅ Créé' : '❌ Échec'}\n` +
+              `• Photo: ${data.details.photo_uploaded ? '✅ Uploadée' : '⚠️ Non uploadée'}\n` +
+              `• MongoDB ID: ${data.details.mongodb_id || 'N/A'}`);
+        
+        // Rediriger vers la page de liste
+        setTimeout(() => {
+          window.location.href = '/user_detail7';
+        }, 2000);
+      } else {
+        let errorMsg = `❌ Erreur: ${data.message}\n\n📋 Détails:\n`;
+        
+        if (data.details) {
+          if (data.details.hikvision_created === false) {
+            errorMsg += '• ❌ Échec Hikvision\n';
+          }
+          if (data.details.mongodb_created === false) {
+            errorMsg += '• ❌ Échec MongoDB\n';
+          }
+          if (data.details.photo_uploaded === false) {
+            errorMsg += '• ⚠️ Photo non uploadée\n';
+          }
+          
+          if (data.details.error) {
+            errorMsg += `\n🔍 Erreur:\n${data.details.error}`;
+          }
+        }
+        
+        alert(errorMsg);
+      }
+    } catch (error) {
+      console.error('❌ Erreur:', error);
+      alert(`❌ Erreur de soumission:\n${error.message}\n\n` +
+            `💡 Vérifiez:\n` +
+            `• La configuration de connexion\n` +
+            `• La connexion au serveur\n` +
+            `• Les logs (F12)`);
+    }
+  });
+
+  // ========================================
+  // 🚀 INITIALISATION
+  // ========================================
+  document.addEventListener("DOMContentLoaded", async () => {
+    console.log('📄 Page chargée');
+    
+    // Vérifier la configuration
+    const config = getConnectionConfig();
+    if (config && config.device_ip) {
+      console.log('✅ Configuration OK:', {
+        ip: config.device_ip,
+        username: config.username
+      });
+    } else {
+      console.warn('⚠️ Aucune configuration. Configurez dans la sidebar.');
+    }
+    
+    await fetchCameraURL();
+
+    // Initialiser l'affichage en fonction du choix actuel (utile si la valeur est pré-remplie)
+    try {
+      await handlePhotoChoice();
+    } catch (e) {
+      console.warn('⚠️ handlePhotoChoice init failed:', e);
+    }
+  });
+
+  // Cleanup
+  window.addEventListener('beforeunload', () => {
+    stopEsp32Stream();
+  });
+
+  // Écouter les changements de connexion
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'hikConnectionConfig') {
+      console.log('🔄 Configuration mise à jour via storage');
+      // Recharger l'URL caméra et redémarrer le stream si nécessaire
+      (async () => {
+        await fetchCameraURL();
+        // if camera zone visible and esp32 selected, restart
+        const activeBtn = document.querySelector('.camera-type-btn.active');
+        const camType = activeBtn ? activeBtn.dataset.camera : null;
+        if (camType === 'esp32') startEsp32Stream();
+      })();
+    }
+  });
+
+  window.addEventListener('connectionUpdated', function(e) {
+    console.log('🔄 Configuration via événement:', e.detail);
+    (async () => {
+      await fetchCameraURL();
+      const activeBtn = document.querySelector('.camera-type-btn.active');
+      const camType = activeBtn ? activeBtn.dataset.camera : null;
+      if (camType === 'esp32') startEsp32Stream();
+    })();
+  });
+
+  console.log('✅ Script initialisé');
+</script>
+{% endblock %}

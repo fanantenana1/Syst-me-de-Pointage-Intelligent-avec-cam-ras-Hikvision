@@ -1,0 +1,21 @@
+nohup: les entrées sont ignorées
+/home/fanantenana/Musique/WebReco_face pro_fin_anné/main6.py:2311: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+INFO:     Started server process [46712]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 8000): address already in use
+INFO:     Waiting for application shutdown.
+[ WARN:0@32.018] global cap_ffmpeg_impl.hpp:453 _opencv_ffmpeg_interrupt_callback Stream timeout triggered after 30081.825426 ms
+[ WARN:0@32.018] global cap.cpp:215 open VIDEOIO(FFMPEG): backend is generally available but can't be used to capture by name
+INFO:     Application shutdown complete.
+🌐 Public IP for Hikvision photo uploads: 192.168.11.96:8000
+🔄 Connexion caméra RTSP...
+📹 RTSP Thread started with URL: rtsp://admin:***@192.168.101.18:554/Streaming/Channels/101
+🛑 Arrêt du serveur...
+❌ Erreur RTSP: Impossible d'ouvrir le flux RTSP

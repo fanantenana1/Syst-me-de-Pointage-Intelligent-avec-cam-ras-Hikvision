@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription Utilisateur - Système Hikvision</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #00bcd4;
+            --secondary-color: #0097a7;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .registration-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .form-section {
+            padding: 30px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+            color: #333;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .section-title i {
+            color: var(--primary-color);
+            font-size: 24px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-label i {
+            color: var(--primary-color);
+            font-size: 14px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(0, 188, 212, 0.15);
+        }
+
+        /* Camera Section */
+        .camera-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .camera-choice-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .choice-btn {
+            padding: 20px;
+            border: 3px solid var(--primary-color);
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .choice-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 188, 212, 0.3);
+        }
+
+        .choice-btn.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .choice-btn i {
+            font-size: 40px;
+            color: var(--primary-color);
+        }
+
+        .choice-btn.active i {
+            color: white;
+        }
+
+        .choice-btn span {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        /* Webcam Container */
+        .webcam-container {
+            position: relative;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #webcamVideo {
+            width: 100%;
+            height: auto;
+            display: block;
+            max-height: 400px;
+            object-fit: cover;
+        }
+
+        .webcam-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 250px;
+            border: 3px dashed var(--primary-color);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .capture-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .capture-btn i {
+            font-size: 24px;
+        }
+
+        /* Photo Preview */
+        .photo-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            border: 2px dashed #dee2e6;
+            min-height: 100px;
+        }
+
+        .photo-preview-grid:empty::before {
+            content: '📷 Aucune photo capturée';
+            color: #6c757d;
+            font-style: italic;
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .photo-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .photo-delete {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .photo-delete:hover {
+            transform: scale(1.1);
+            background: #c82333;
+        }
+
+        /* Submit Button */
+        .submit-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e9ecef;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border: none;
+            border-radius: 12px;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-cancel {
+            background: #6c757d;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cancel:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        /* Loading Spinner */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Alert Messages */
+        .alert-custom {
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-custom i {
+            font-size: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .camera-choice-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .photo-preview-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h4>Traitement en cours...</h4>
+            <p>Veuillez patienter</p>
+        </div>
+    </div>
+
+    <div class="registration-container">
+        <!-- Header -->
+        <div class="header">
+            <i class="fas fa-user-plus fa-3x mb-3"></i>
+            <h1>Inscription Utilisateur</h1>
+            <p>Système de Reconnaissance Faciale Hikvision</p>
+        </div>
+
+        <!-- Form -->
+        <form id="registrationForm" class="form-section">
+            <!-- Personal Information -->
+            <div class="mb-4">
+                <div class="section-title">
+                    <i class="fas fa-id-card"></i>
+                    <span>Informations Personnelles</span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-hashtag"></i>
+                            Numéro d'employé *
+                        </label>
+                        <input type="text" name="employee_no" class="form-control" required 
+                               placeholder="Ex: EMP001">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-user"></i>
+                            Nom complet *
+                        </label>
+                        <input type="text" name="name" class="form-control" required 
+                               placeholder="Jean Dupont">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-id-badge"></i>
+                            CIN
+                        </label>
+                        <input type="text" name="cin" class="form-control" 
+                               placeholder="123456789012">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-envelope"></i>
+                            Email
+                        </label>
+                        <input type="email" name="email" class="form-control" 
+                               placeholder="exemple@mail.com">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-phone"></i>
+                            Téléphone
+                        </label>
+                        <input type="tel" name="telephone" class="form-control" 
+                               placeholder="+261 32 00 000 00">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-map-marker-alt"></i>
+                            Adresse
+                        </label>
+                        <input type="text" name="address" class="form-control" 
+                               placeholder="Adresse complète">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Camera Section -->
+            <div class="camera-section">
+                <div class="section-title">
+                    <i class="fas fa-camera"></i>
+                    <span>Capture de Photo Faciale</span>
+                </div>
+
+                <!-- Choice Buttons -->
+                <div class="camera-choice-buttons">
+                    <div class="choice-btn active" data-method="camera" id="cameraBtn">
+                        <i class="fas fa-video"></i>
+                        <span>Caméra en direct</span>
+                        <small>Prendre une photo</small>
+                    </div>
+                    <div class="choice-btn" data-method="file" id="fileBtn">
+                        <i class="fas fa-folder-open"></i>
+                        <span>Importer fichier</span>
+                        <small>Depuis l'appareil</small>
+                    </div>
+                </div>
+
+                <!-- Camera View -->
+                <div id="cameraView" class="camera-view">
+                    <div class="webcam-container">
+                        <video id="webcamVideo" autoplay playsinline></video>
+                        <div class="webcam-overlay"></div>
+                    </div>
+                    <button type="button" class="btn btn-primary capture-btn" id="captureBtn">
+                        <i class="fas fa-camera"></i>
+                        Capturer la photo
+                    </button>
+                    <small class="text-muted d-block text-center mt-2">
+                        <i class="fas fa-info-circle"></i> Placez votre visage dans le cercle
+                    </small>
+                </div>
+
+                <!-- File Input View -->
+                <div id="fileView" class="file-view d-none">
+                    <input type="file" id="fileInput" class="form-control" 
+                           accept="image/*" multiple>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-info-circle"></i> Sélectionnez une ou plusieurs photos
+                    </small>
+                </div>
+            </div>
+
+            <!-- Photo Preview -->
+            <div class="mb-4">
+                <div class="section-title">
+                    <i class="fas fa-images"></i>
+                    <span>Photos Capturées</span>
+                </div>
+                <div class="photo-preview-grid" id="photoPreview"></div>
+            </div>
+
+            <!-- Submit Section -->
+            <div class="submit-section">
+                <button type="submit" class="btn btn-submit">
+                    <i class="fas fa-check-circle"></i>
+                    S'inscrire
+                </button>
+                <button type="button" class="btn btn-cancel" onclick="window.history.back()">
+                    <i class="fas fa-times-circle"></i>
+                    Annuler
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Variables globales
+        let stream = null;
+        let capturedPhotos = [];
+        const video = document.getElementById('webcamVideo');
+        const photoPreview = document.getElementById('photoPreview');
+        const cameraView = document.getElementById('cameraView');
+        const fileView = document.getElementById('fileView');
+        const fileInput = document.getElementById('fileInput');
+        const cameraBtn = document.getElementById('cameraBtn');
+        const fileBtn = document.getElementById('fileBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const form = document.getElementById('registrationForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            startCamera(); // Démarrer la caméra par défaut
+        });
+
+        // Gestion du choix (Caméra / Fichier)
+        cameraBtn.addEventListener('click', () => {
+            cameraBtn.classList.add('active');
+            fileBtn.classList.remove('active');
+            cameraView.classList.remove('d-none');
+            fileView.classList.add('d-none');
+            startCamera();
+        });
+
+        fileBtn.addEventListener('click', () => {
+            fileBtn.classList.add('active');
+            cameraBtn.classList.remove('active');
+            fileView.classList.remove('d-none');
+            cameraView.classList.add('d-none');
+            stopCamera();
+        });
+
+        // Démarrer la caméra
+        async function startCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    }
+                };
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                console.log('✅ Caméra démarrée');
+            } catch (error) {
+                console.error('❌ Erreur caméra:', error);
+                alert('❌ Impossible d\'accéder à la caméra.\n\n' +
+                      'Vérifiez les permissions de votre navigateur.');
+            }
+        }
+
+        // Arrêter la caméra
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                stream = null;
+                console.log('⏸️ Caméra arrêtée');
+            }
+        }
+
+        // Capturer une photo
+        captureBtn.addEventListener('click', () => {
+            if (!stream) {
+                alert('⚠️ La caméra n\'est pas active');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    const file = new File(
+                        [blob], 
+                        `capture_${Date.now()}.jpg`, 
+                        { type: 'image/jpeg' }
+                    );
+                    capturedPhotos.push(file);
+                    addPhotoPreview(URL.createObjectURL(blob), file.name);
+                    console.log(`📸 Photo capturée: ${file.name}`);
+                }
+            }, 'image/jpeg', 0.9);
+        });
+
+        // Gérer l'import de fichiers
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            
+            capturedPhotos = capturedPhotos.concat(files);
+            
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    addPhotoPreview(e.target.result, file.name);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // Ajouter une photo à l'aperçu
+        function addPhotoPreview(url, filename) {
+            const photoItem = document.createElement('div');
+            photoItem.className = 'photo-item';
+            photoItem.innerHTML = `
+                <img src="${url}" alt="Photo">
+                <button type="button" class="photo-delete" onclick="deletePhoto('${filename}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            photoPreview.appendChild(photoItem);
+        }
+
+        // Supprimer une photo
+        window.deletePhoto = function(filename) {
+            capturedPhotos = capturedPhotos.filter(f => f.name !== filename);
+            photoPreview.innerHTML = '';
+            
+            capturedPhotos.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    addPhotoPreview(e.target.result, file.name);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            console.log(`🗑️ Photo supprimée: ${filename}`);
+        };
+
+        // Soumission du formulaire
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (capturedPhotos.length === 0) {
+                alert('⚠️ Veuillez capturer ou importer au moins une photo !');
+                return;
+            }
+
+            // Afficher le loading
+            loadingOverlay.style.display = 'flex';
+
+            const formData = new FormData(form);
+            
+            // Ajouter les photos capturées
+            capturedPhotos.forEach(photo => {
+                formData.append('photos', photo);
+            });
+
+            // Ajouter les paramètres de connexion (à adapter selon votre config)
+            formData.append('device_ip', '192.168.101.18'); // À récupérer dynamiquement
+            formData.append('username', 'admin');
+            formData.append('password', 'Eni20230');
+            formData.append('port', 80);
+            formData.append('user_type', 'normal');
+            formData.append('valid_days', 365);
+
+            try {
+                const response = await fetch('/api/users/add', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                loadingOverlay.style.display = 'none';
+
+                if (result.status === 'success') {
+                    alert('✅ Inscription réussie !\n\n' +
+                          `Nom: ${formData.get('name')}\n` +
+                          `ID: ${formData.get('employee_no')}\n\n` +
+                          'Vous pouvez maintenant utiliser le système.');
+                    
+                    // Réinitialiser le formulaire
+                    form.reset();
+                    capturedPhotos = [];
+                    photoPreview.innerHTML = '';
+                    
+                    // Optionnel: rediriger
+                    // window.location.href = '/success';
+                } else {
+                    throw new Error(result.message || 'Erreur inconnue');
+                }
+
+            } catch (error) {
+                loadingOverlay.style.display = 'none';
+                console.error('❌ Erreur:', error);
+                alert('❌ Erreur lors de l\'inscription:\n\n' + error.message);
+            }
+        });
+
+        // Nettoyage à la fermeture
+        window.addEventListener('beforeunload', () => {
+            stopCamera();
+        });
+    </script>
+</body>
+</html>

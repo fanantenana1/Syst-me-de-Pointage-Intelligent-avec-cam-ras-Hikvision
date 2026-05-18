@@ -1,0 +1,969 @@
+{% extends 'admin/page_ajour.html' %}
+
+{% block title %}Gestion des Présences - Hikvision{% endblock %}
+
+{% block page_header %}
+    <i class="bi bi-calendar-check"></i> Gestion des Présences
+{% endblock %}
+
+{% block head_extra %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+        }
+
+        body {
+            background: linear-gradient(180deg, #D8E9EB, #F3F7F8, #E7F0F2);
+            min-height: 100vh;
+            padding: 0px 0;
+        }
+
+        .main-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 1400px;
+        }
+
+        /* ====== TABLEAU DE FILTRES ====== */
+        .filter-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .filter-table th,
+        .filter-table td {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .filter-table th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        .filter-table input,
+        .filter-table select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .btn-load {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-load:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* ====== TABLEAU ÉVÉNEMENTS ====== */
+        .events-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .events-table th,
+        .events-table td {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .events-table th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        .events-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-present {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-absent {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-unknown {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        /* ====== CARTES STATISTIQUES ====== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin: 0;
+        }
+
+        .stat-card.total .stat-number { color: #667eea; }
+        .stat-card.validated .stat-number { color: #27ae60; }
+        .stat-card.refused .stat-number { color: #e74c3c; }
+        .stat-card.success-rate .stat-number { color: #11998e; }
+        .stat-card.unique .stat-number { color: #fa709a; }
+
+        /* ====== SECTIONS ====== */
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title i {
+            color: #667eea;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modal */
+        .modal-header-custom {
+            background: linear-gradient(135deg, #3d4144, #4e5053);
+            color: rgb(93, 152, 240);
+        }
+
+        .user-photo {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid #667eea;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .no-photo {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+            border: 4px solid #667eea;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .filter-table {
+                font-size: 0.8rem;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .events-table {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <div class="container-fluid main-container">
+        <!-- ====== TABLEAU DE FILTRES ====== -->
+        <div class="section-title">
+            <i class="bi bi-funnel"></i> Filtres de Présence
+        </div>
+        <table class="filter-table">
+            <thead>
+                <tr>
+                    <th>Date début</th>
+                    <th>Date fin</th>
+                    <th>Période</th>
+                    <th>Statut</th>
+                    <th>Type</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><input type="date" class="form-control" id="startDate"></td>
+                    <td><input type="date" class="form-control" id="endDate"></td>
+                    <td>
+                        <select class="form-select" id="periodSelect">
+                            <option value="all">Toutes</option>
+                            <option value="Matin">Matin</option>
+                            <option value="Après-midi">Après-midi</option>
+                            <option value="Soir">Soir</option>
+                            <option value="Nuit">Nuit</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select" id="statusFilter">
+                            <option value="all">Tous</option>
+                            <option value="present">Présent</option>
+                            <option value="absent">Absent</option>
+                            <option value="unknown">Non identifié</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select" id="filterType">
+                            <option value="filtered">MongoDB uniquement</option>
+                            <option value="all">Tous les événements</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button class="btn btn-load" onclick="loadPresences()">
+                            <i class="bi bi-search"></i> Charger
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- ====== STATISTIQUES ====== -->
+        <div class="stats-grid" id="statsSection" style="display: none;">
+            <div class="stat-card total">
+                <div class="stat-number" id="totalEvents">0</div>
+                <div class="stat-label">Total événements</div>
+            </div>
+            <div class="stat-card validated">
+                <div class="stat-number" id="validatedEvents">0</div>
+                <div class="stat-label">Présents</div>
+            </div>
+            <div class="stat-card refused">
+                <div class="stat-number" id="refusedEvents">0</div>
+                <div class="stat-label">Absents</div>
+            </div>
+            <div class="stat-card success-rate">
+                <div class="stat-number" id="successRate">0%</div>
+                <div class="stat-label">Taux de présence</div>
+            </div>
+            <div class="stat-card unique">
+                <div class="stat-number" id="uniqueUsers">0</div>
+                <div class="stat-label">Personnes uniques</div>
+            </div>
+        </div>
+
+        <!-- ====== TABLEAU ÉVÉNEMENTS ====== -->
+        <div class="section-title" id="eventsTitle" style="display: none;">
+            <i class="bi bi-calendar-event"></i> Événements de présence
+        </div>
+        <div class="table-container" id="eventsContainer" style="display: none;">
+            <table class="events-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Employé</th>
+                        <th>Nom</th>
+                        <th>Type</th>
+                        <th>Statut</th>
+                        <th>Date</th>
+                        <th>Heure</th>
+                        <th>Jour</th>
+                        <th>Période</th>
+                        <th>Détails</th>
+                    </tr>
+                </thead>
+                <tbody id="eventsTableBody">
+                    <!-- Data loaded dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ====== LISTE DES ABSENTS ====== -->
+        <div class="section-title" id="absentsTitle" style="display: none;">
+            <i class="bi bi-person-x"></i> Personnes absentes (dans MongoDB/Hikvision mais pas dans les événements)
+        </div>
+        <div class="table-container" id="absentsContainer" style="display: none;">
+            <table class="events-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>CIN</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Carte</th>
+                        <th>Empreinte</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody id="absentsTableBody">
+                    <!-- Data loaded dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- User Details Modal -->
+    <div class="modal fade" id="userDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header modal-header-custom">
+                    <h5 class="modal-title">
+                        <i class="bi bi-person-circle"></i> Détails de la personne
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div id="userPhotoContainer"></div>
+                            <h4 id="modalUserName"></h4>
+                            <p class="text-muted" id="modalEmployeeId"></p>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="row mb-3">
+                                <div class="col-4">
+                                    <div class="stat-mini-card">
+                                        <h3 id="modalTotalEvents" class="primary">0</h3>
+                                        <small>Total</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="stat-mini-card">
+                                        <h3 id="modalValidatedEvents" class="success">0</h3>
+                                        <small>Validés</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="stat-mini-card">
+                                        <h3 id="modalRefusedEvents" class="danger">0</h3>
+                                        <small>Refusés</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="userInfoCard"></div>
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-primary" id="editToggleBtn" onclick="toggleEditMode()">
+                                    <i class="bi bi-pencil"></i> Modifier
+                                </button>
+                                <button class="btn btn-sm btn-success" id="saveChangesBtn" onclick="saveUserChanges()" style="display:none;">
+                                    <i class="bi bi-check"></i> Sauvegarder
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-clock-history"></i> Timeline des événements</h6>
+                            <div class="event-timeline" id="eventTimeline"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <canvas id="pieChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="timelineChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+    // ========================================
+    // 🌐 VARIABLES GLOBALES
+    // ========================================
+    let allEvents = [];
+    let currentEvents = [];
+    let allMongoUsers = []; // Nouveau : tous les utilisateurs MongoDB
+    let absentUsers = []; // Nouveau : utilisateurs absents
+    let userDetailsModal;
+    let pieChart, timelineChart;
+    let editMode = false;
+    let currentUserData = null;
+    let currentConfig = null;
+    let registeredUsers = [];
+
+    // ========================================
+    // 🔧 GESTION DE LA CONFIGURATION
+    // ========================================
+    async function getDeviceConfig() {
+        try {
+            const res = await fetch('/api/get_device_config');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.config) {
+                    localStorage.setItem('hikConnectionConfig', JSON.stringify(data.config));
+                    return data.config;
+                }
+            }
+            
+            const saved = localStorage.getItem('hikConnectionConfig');
+            if (saved) {
+                return JSON.parse(saved);
+            }
+            
+            if (typeof window.getHikConnectionConfig === 'function') {
+                const config = window.getHikConnectionConfig();
+                return {
+                    ip: config.ip,
+                    username: config.username,
+                    password: config.password,
+                    port: config.port || 80
+                };
+            }
+            
+            return null;
+        } catch(e) {
+            console.error('❌ Erreur getDeviceConfig:', e);
+            return null;
+        }
+    }
+
+    async function updateConnectionDisplay() {
+        const config = await getDeviceConfig();
+        if (config && config.ip && config.username) {
+            currentConfig = config;
+            return true;
+        } else {
+            currentConfig = null;
+            return false;
+        }
+    }
+
+    // ========================================
+    // 📢 NOTIFICATIONS
+    // ========================================
+    function showNotification(message, type = 'info') {
+        const colors = {
+            success: '#27ae60',
+            error: '#e74c3c',
+            warning: '#f39c12',
+            info: '#3498db'
+        };
+        const notif = document.createElement('div');
+        notif.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 18px;
+            background: ${colors[type]};
+            color: white;
+            border-radius: 8px;
+            z-index: 9999;
+            font-size: 0.9rem;
+            animation: fadeIn 0.3s ease;
+        `;
+        notif.textContent = message;
+        document.body.appendChild(notif);
+        setTimeout(() => notif.remove(), 3000);
+    }
+
+    function showLoading() {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    // ========================================
+    // 📥 CHARGEMENT DES DONNÉES
+    // ========================================
+    async function loadPresences() {
+        const config = await getDeviceConfig();
+        if (!config || !config.ip || !config.username || !config.password) {
+            showNotification('⚠️ Configuration manquante - Mode démo activé', 'warning');
+            loadDemoData(); // Mode démo si pas de config
+            return;
+        }
+
+        const filterType = document.getElementById('filterType').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        showLoading();
+
+        try {
+            // Charger les utilisateurs MongoDB
+            console.log('📋 Chargement des utilisateurs MongoDB...');
+            const mongoUsersResponse = await fetch(`/api/users/list?device_ip=${encodeURIComponent(config.ip)}&username=${encodeURIComponent(config.username)}&password=${encodeURIComponent(config.password)}`);
+            const mongoUsersData = await mongoUsersResponse.json();
+            
+            if (mongoUsersData.status === 'success') {
+                allMongoUsers = mongoUsersData.users || [];
+                console.log(`✅ ${allMongoUsers.length} utilisateurs MongoDB chargés`);
+            }
+
+            // Charger les événements
+            const endpoint = filterType === 'filtered' ? '/api/presences/filtered' : '/api/presences';
+            const url = `${endpoint}?device_ip=${encodeURIComponent(config.ip)}&username=${encodeURIComponent(config.username)}&password=${encodeURIComponent(config.password)}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.success) {
+                allEvents = data.events || [];
+                registeredUsers = data.users || [];
+                
+                // Calculer les utilisateurs absents
+                calculateAbsentUsers();
+                
+                // SELON LE FILTRE DE STATUT, AFFICHER DIFFÉRENTES DONNÉES
+                if (statusFilter === 'absent') {
+                    // AFFICHER UNIQUEMENT LA LISTE DES ABSENTS
+                    displayAbsentsOnly();
+                } else if (statusFilter === 'present') {
+                    // AFFICHER UNIQUEMENT LES ÉVÉNEMENTS PRÉSENTS
+                    displayPresentsOnly();
+                } else {
+                    // AFFICHER TOUT (COMPORTEMENT NORMAL)
+                    displayAllData();
+                }
+                
+                showNotification(`✅ ${allEvents.length} événements chargés, ${absentUsers.length} absents identifiés`, 'success');
+            } else {
+                showNotification('❌ Erreur: ' + data.error, 'error');
+                loadDemoData(); // Fallback
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            showNotification('❌ Erreur de connexion - Mode démo', 'error');
+            loadDemoData(); // Mode démo en cas d'erreur
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function calculateAbsentUsers() {
+        absentUsers = [];
+        
+        // Pour chaque utilisateur MongoDB
+        allMongoUsers.forEach(mongoUser => {
+            const empNo = mongoUser.employee_no;
+            const name = mongoUser.name;
+            
+            // Vérifier si l'utilisateur apparaît dans les événements
+            const isPresentInEvents = allEvents.some(event => 
+                event.employee_id === empNo || 
+                (event.name && event.name !== '-' && event.name === name)
+            );
+            
+            // Si l'utilisateur n'est pas dans les événements, il est absent
+            if (!isPresentInEvents) {
+                absentUsers.push(mongoUser);
+            }
+        });
+        
+        console.log(`📊 ${absentUsers.length} utilisateurs absents identifiés`);
+    }
+
+    function displayAbsentsOnly() {
+        // CACHER LE TABLEAU DES ÉVÉNEMENTS
+        document.getElementById('eventsTitle').style.display = 'none';
+        document.getElementById('eventsContainer').style.display = 'none';
+        document.getElementById('userStatsSection').style.display = 'none';
+        
+        // AFFICHER UNIQUEMENT LA LISTE DES ABSENTS
+        document.getElementById('absentsTitle').style.display = 'block';
+        document.getElementById('absentsContainer').style.display = 'block';
+        
+        // Afficher les statistiques pour les absents
+        const stats = {
+            total: absentUsers.length,
+            present: 0,
+            absent: absentUsers.length,
+            successRate: '0.0',
+            refusedRate: '100.0',
+            unique: absentUsers.length
+        };
+        displayStatistics(stats);
+        
+        // Afficher le tableau des absents
+        displayAbsentsTable(absentUsers);
+    }
+
+    function displayPresentsOnly() {
+        // FILTRER LES ÉVÉNEMENTS PRÉSENTS
+        const presentEvents = allEvents.filter(event => {
+            const hasName = event.name && event.name !== '-';
+            return hasName;
+        });
+        
+        // AFFICHER LE TABLEAU DES ÉVÉNEMENTS PRÉSENTS
+        document.getElementById('eventsTitle').style.display = 'block';
+        document.getElementById('eventsContainer').style.display = 'block';
+        document.getElementById('userStatsSection').style.display = 'block';
+        
+        // CACHER LA LISTE DES ABSENTS
+        document.getElementById('absentsTitle').style.display = 'none';
+        document.getElementById('absentsContainer').style.display = 'none';
+        
+        // Calculer et afficher les statistiques
+        const stats = calculateStats(presentEvents);
+        displayStatistics(stats);
+        displayEventsTable(presentEvents);
+        
+        // Stats par personne
+        const userStats = calculateUserStats(presentEvents);
+        displayUserStatsTable(userStats);
+    }
+
+    function displayAllData() {
+        // AFFICHER TOUTES LES SECTIONS
+        document.getElementById('eventsTitle').style.display = 'block';
+        document.getElementById('eventsContainer').style.display = 'block';
+        document.getElementById('userStatsSection').style.display = 'block';
+        document.getElementById('absentsTitle').style.display = 'block';
+        document.getElementById('absentsContainer').style.display = 'block';
+        
+        // Appliquer tous les filtres
+        applyAllFilters();
+        
+        const stats = calculateStats(currentEvents);
+        displayStatistics(stats);
+        displayEventsTable(currentEvents);
+        
+        // Stats par personne
+        const userStats = calculateUserStats(currentEvents);
+        displayUserStatsTable(userStats);
+        
+        // Afficher la liste des absents
+        displayAbsentsTable(absentUsers);
+    }
+
+    function applyAllFilters() {
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        const period = document.getElementById('periodSelect').value;
+
+        currentEvents = allEvents.filter(e => {
+            if (start && e.date < start) return false;
+            if (end && e.date > end) return false;
+            if (period !== 'all' && e.period !== period) return false;
+            return true;
+        });
+    }
+
+    // ========================================
+    // 📋 AFFICHAGE TABLEAU ABSENTS
+    // ========================================
+    function displayAbsentsTable(absentUsers) {
+        const tbody = document.getElementById('absentsTableBody');
+        tbody.innerHTML = '';
+
+        if (absentUsers.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center">
+                        <div class="empty-state">
+                            <i class="bi bi-person-check"></i>
+                            <div>Tous les utilisateurs sont présents dans les événements</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        absentUsers.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.employee_no || '-'}</td>
+                <td><strong>${user.name || 'Inconnu'}</strong></td>
+                <td>${user.cin || '-'}</td>
+                <td>${user.email || '-'}</td>
+                <td>${user.telephone || '-'}</td>
+                <td>${user.carte_number || '-'}</td>
+                <td>${user.fingerprint_id || '-'}</td>
+                <td><span class="status-badge status-absent">Absent</span></td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // ========================================
+    // 📊 STATISTIQUES PAR PERSONNE
+    // ========================================
+    function calculateUserStats(events) {
+        const stats = {};
+        events.forEach(event => {
+            const key = `${event.employee_id}-${event.name}`;
+            if (!stats[key]) {
+                stats[key] = {
+                    employee_id: event.employee_id,
+                    name: event.name,
+                    total: 0,
+                    present: 0,
+                    absent: 0
+                };
+            }
+            stats[key].total++;
+            const hasName = event.name && event.name !== '-';
+            if (hasName) stats[key].present++;
+            else stats[key].absent++;
+        });
+        return Object.values(stats);
+    }
+
+    function displayUserStatsTable(userStats) {
+        const tbody = document.getElementById('userStatsBody');
+        tbody.innerHTML = '';
+
+        if (userStats.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center">
+                        <div class="empty-state">
+                            <i class="bi bi-people"></i>
+                            <div>Aucune statistique disponible</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        userStats.sort((a, b) => b.total - a.total);
+        userStats.forEach(stat => {
+            const successRate = stat.total > 0 ? ((stat.present / stat.total) * 100).toFixed(1) : 0;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${stat.employee_id || '-'}</td>
+                <td><strong>${stat.name || 'Inconnu'}</strong></td>
+                <td><span class="badge bg-primary">${stat.total}</span></td>
+                <td><span class="badge bg-success">${stat.present}</span></td>
+                <td><span class="badge bg-danger">${stat.absent}</span></td>
+                <td>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-success" style="width: ${successRate}%">${successRate}%</div>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <i class="bi bi-info-circle-fill detail-icon" 
+                       onclick="showUserDetails('${stat.employee_id || ''}', '${(stat.name || 'Inconnu').replace(/'/g, "\\'")}')"
+                       style="cursor: pointer; color: #667eea; font-size: 1.2rem;">
+                    </i>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // ========================================
+    // 👤 MODAL DÉTAILS UTILISATEUR
+    // ========================================
+    async function showUserDetails(employeeId, userName) {
+        if (!currentConfig) {
+            showNotification('⚠️ Configuration manquante', 'warning');
+            return;
+        }
+        
+        showLoading();
+        const userEvents = allEvents.filter(e => e.employee_id === employeeId || e.name === userName);
+
+        if (userEvents.length === 0) {
+            hideLoading();
+            showNotification('❌ Aucun événement trouvé pour cette personne', 'error');
+            return;
+        }
+
+        const firstEvent = userEvents[0];
+        currentUserData = {
+            employee_id: employeeId,
+            name: userName,
+            cin: firstEvent.cin || '',
+            email: firstEvent.email || '',
+            telephone: firstEvent.telephone || '',
+            address: firstEvent.address || '',
+            carte_number: firstEvent.carte_number || '',
+            fingerprint_id: firstEvent.fingerprint_id || '',
+            photo_url: null
+        };
+
+        try {
+            const photoRes = await fetch(`/api/user/photo?employee_id=${encodeURIComponent(employeeId)}&device_ip=${encodeURIComponent(currentConfig.ip)}`);
+            const photoData = await photoRes.json();
+            if (photoData.success && photoData.has_photo) currentUserData.photo_url = photoData.photo_url;
+        } catch (e) {
+            console.error('Erreur photo:', e);
+        }
+
+        document.getElementById('modalUserName').textContent = userName;
+        document.getElementById('modalEmployeeId').textContent = `ID: ${employeeId}`;
+        document.getElementById('modalTotalEvents').textContent = userEvents.length;
+        
+        const isIdentified = employeeId && employeeId !== '-' && userName && userName !== '-';
+        const present = isIdentified ? userEvents.length : 0;
+        const absent = !isIdentified ? userEvents.length : 0;
+        
+        document.getElementById('modalValidatedEvents').textContent = present;
+        document.getElementById('modalRefusedEvents').textContent = absent;
+
+        const photoContainer = document.getElementById('userPhotoContainer');
+        if (currentUserData.photo_url) {
+            photoContainer.innerHTML = `<img src="${currentUserData.photo_url}" class="user-photo" alt="${userName}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-photo\\'><i class=\\'bi bi-person\\'></i></div>';">`;
+        } else {
+            photoContainer.innerHTML = `<div class="no-photo"><i class="bi bi-person"></i></div>`;
+        }
+
+        // Timeline
+        const timeline = document.getElementById('eventTimeline');
+        timeline.innerHTML = '';
+        userEvents.sort((a, b) => new Date(b.datetime) - new Date(a.datetime)).forEach(event => {
+            const eventClass = isIdentified ? 'validated' : 'refused';
+            const statusIcon = isIdentified ? '✅' : '❌';
+            const statusColor = isIdentified ? 'success' : 'danger';
+            const newStatus = isIdentified ? 'Validé' : 'Refusé';
+
+            const eventDiv = document.createElement('div');
+            eventDiv.className = `event-item ${eventClass}`;
+            eventDiv.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">
+                            ${statusIcon} <strong>${event.method}</strong> - 
+                            <span class="badge bg-${statusColor}">${newStatus}</span>
+                        </h6>
+                        <p class="mb-1 text-muted">
+                            <i class="bi bi-calendar"></i> ${event.date} 
+                            <i class="bi bi-clock ms-2"></i> ${event.time}
+                            <span class="badge bg-secondary ms-2">${event.day}</span>
+                            <span class="badge bg-info ms-1">${event.period}</span>
+                        </p>
+                        <small class="text-muted">
+                            <i class="bi bi-door-open"></i> Porte: ${event.door_no} | 
+                            Code: (${event.major},${event.minor})
+                        </small>
+                    </div>
+                </div>
+            `;
+            timeline.appendChild(eventDiv);
+        });
+
+        hideLoading();
+
+        const modalElement = document.getElementById('userDetailsModal');
+        if (!userDetailsModal && modalElement) {
+            userDetailsModal = new bootstrap.Modal(modalElement, { backdrop: true, keyboard: true, focus: true });
+        }
+        if (userDetailsModal) userDetailsModal.show();
+    }
+
+    // ========================================
+    // 🎬 INITIALISATION
+    // ========================================
+    document.addEventListener('DOMContentLoaded', async () => {
+        await updateConnectionDisplay();
+        setInterval(updateConnectionDisplay, 2000);
+        
+        // Filtres auto
+        ['startDate', 'endDate', 'periodSelect', 'statusFilter'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                loadPresences(); // Recharger les données quand le filtre change
+            });
+        });
+    });
+    </script>
+{% endblock %}

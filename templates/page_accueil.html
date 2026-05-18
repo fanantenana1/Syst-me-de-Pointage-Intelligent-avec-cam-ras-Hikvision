@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Système de pointage intelligent avec reconnaissance faciale HIKVISION">
+    <title>SmartPresence Pro - Système de Pointage Intelligent</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Variables */
+        :root {
+            --white: #ffffff;
+            --gray-light: #d1dbdf;
+            --blue-light: #bbdee8;
+            --blue-mid: #c5d6e4;
+            --cyan-light: #d9f7f9;
+            --dark: #2c3e50;
+            --text-secondary: #546e7a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--white);
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+        /*
+            #bg-image {
+      background-image: url('/static/img/pngegg\(4\).png'); 
+      background-size: cover;      
+      background-position: center;
+      background-repeat: no-repeat;
+      height: 100vh;               
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;                 
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.7); 
+    }*/
+        /* ==================== Background Animation ==================== */
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            /*background: linear-gradient(135deg, var(--cyan-light) 0%, var(--blue-light) 50%, var(--blue-mid) 100%);*/
+            background: linear-gradient(135deg, var(--cyan-light) 0%, #c8f1fd 50%, var(--blue-mid) 100%);
+            overflow: hidden;
+        }
+
+
+        .background-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(187, 222, 232, 0.3) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: moveBackground 30s linear infinite;
+        }
+
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .shape-1 {
+            width: 300px;
+            height: 300px;
+            background: var(--blue-light);
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .shape-2 {
+            width: 250px;
+            height: 250px;
+            background: var(--cyan-light);
+            top: 60%;
+            right: 15%;
+            animation-delay: 5s;
+        }
+
+        .shape-3 {
+            width: 200px;
+            height: 200px;
+            background: var(--blue-mid);
+            bottom: 10%;
+            left: 20%;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+
+        @keyframes moveBackground {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* ==================== Navbar ==================== */
+        .navbar {
+            background: #283d4e;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 2px 30px #00000014;
+            padding: 1rem 0;
+            transition: all 0.3s ease;
+            max-height: 9%;
+        }
+
+        .navbar.scrolled {
+            padding: 0.5rem 0;
+            box-shadow: 0 4px 30px #0000001f;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: #18d3f2;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            transform: translateX(5px);
+        }
+
+        .logo {
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, #6068dd, #005aaa);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 20px rgba(187, 222, 232, 0.5);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .logo i {
+            font-size: 26px;
+            color: white;
+        }
+
+        .nav-link {
+            color: #d6e5ec;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            margin: 0 0.2rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 3px;
+            background: linear-gradient(135deg, var(--blue-light), var(--cyan-light));
+            transform: translateX(-50%);
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .nav-link:hover::after {
+            width: 70%;
+        }
+
+        .nav-link:hover {
+            color: #56a8f0;
+        }
+
+        /* ==================== Hero Section ==================== */
+        .hero-section {
+            min-height: 87vh;
+  display: flex;
+  align-items: center;
+  padding: 106px 0 0px;
+  position: relative;
+        }
+
+        .hero-content {
+            text-align: center;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: rgba(157, 194, 242, 0.9);
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 2rem;
+            text-shadow: 0 5px 20px rgba(98, 113, 193, 0);
+
+        }
+
+        .hero-badge i {
+            color: var(--blue-light);
+            margin-right: 0.5rem;
+        }
+
+        .hero-title {
+            background: linear-gradient(135deg,#05cedb, #2b5199);
+            background-clip: border-box;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3.1rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+            letter-spacing: -1px;
+        }
+
+        .hero-title .highlight {
+            background: linear-gradient(135deg, #2b5199, #05cedb);
+                        background-clip: border-box;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            /*line-height: 1.6;*/
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-hero-primary {
+            background: linear-gradient(135deg, #a2c6f2, var(--cyan-light));
+            color: #5051a4de;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: none;
+            box-shadow: 0 8px 25px rgba(130, 159, 168, 0.53);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-hero-primary:hover {
+            background: var(--dark);
+            color: white;
+            border-color: var(--dark);
+            transform: translateY(-3px);
+        }
+
+        .btn-hero-secondary {
+             background: linear-gradient(135deg, var(--cyan-light),#a2c6f2);
+            color: #5051a4de ;
+            padding: 16px 40px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: 2px solid var(--blue-light);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+              box-shadow: 0 8px 25px rgba(130, 159, 168, 0.53);
+            gap: 10px;
+        }
+
+        .btn-hero-secondary:hover {
+            background: var(--dark);
+            color: white;
+            border-color: var(--dark);
+            transform: translateY(-3px);
+        }
+
+        .hero-image {
+            margin-top: 4rem;
+            position: relative;
+        }
+
+        .authentication-scene {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+            height: 348px;
+        }
+
+        .device-terminal {
+            position: absolute;
+            right: 12%;
+            top: 40%;
+            transform: translateY(-50%);
+            width: 230px;
+            height: 308px;
+            background: linear-gradient(145deg, #1a1a2e, #2d2d44);
+            border-radius: 20px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            z-index: 2;
+        }
+
+        .terminal-screen {
+            width: 100%;
+            height: 205px;
+            background: linear-gradient(135deg, var(--blue-light), #747fac);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scan-overlay {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+            animation: scanLine 2s ease-in-out infinite;
+        }
+
+        @keyframes scanLine {
+            0%, 100% { top: 20%; opacity: 0; }
+            50% { top: 80%; opacity: 1; }
+        }
+
+        .face-detection-box {
+            width: 120px;
+            height: 95px;
+            border: 3px solid #08b945;
+            border-radius: 10px;
+            position: relative;
+            animation: pulseBox 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseBox {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+
+        .face-corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #4ade80;
+        }
+
+        .face-corner.top-left {
+            top: -3px;
+            left: -3px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .face-corner.top-right {
+            top: -3px;
+            right: -3px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .face-corner.bottom-left {
+            bottom: -3px;
+            left: -3px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .face-corner.bottom-right {
+            bottom: -3px;
+            right: -3px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .status-text {
+            color: white;
+            font-weight: 700;
+            margin-top: 15px;
+            font-size: 1.1rem;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .terminal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .terminal-btn {
+            flex: 1;
+            padding: 5px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .person-figure {
+            position: absolute;
+            left: 15%;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+
+        .person-body {
+            width: 200px;
+            height: 350px;
+            position: relative;
+        }
+
+        .person-head {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #4ade80, #3b82f6);
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            position: relative;
+            box-shadow: 0 5px 20px rgba(74, 222, 128, 0.4);
+        }
+
+        .person-face-scan {
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            border: 2px dashed #1a546a;
+            border-radius: 50%;
+            top: -5px;
+            left: -5px;
+            animation: rotateScan 7s linear infinite;
+        }
+
+        @keyframes rotateScan {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .person-torso {
+            width: 120px;
+            height: 160px;
+            background: linear-gradient(135deg, #b8cad9, var(--blue-light));
+            border-radius: 60px 60px 20px 20px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .person-arm-right {
+            position: absolute;
+            right: -40px;
+            top: 20px;
+            width: 40px;
+            height: 140px;
+            background: linear-gradient(135deg, #b8cad9, var(--blue-light));
+            border-radius: 20px;
+            transform-origin: top center;
+            animation: armReach 3s ease-in-out infinite;
+        }
+
+        @keyframes armReach {
+            0%, 100% { transform: rotate(-10deg); }
+            50% { transform: rotate(15deg); }
+        }
+
+        .person-hand {
+            position: absolute;
+            bottom: -25px;
+            right: -5px;
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #4ade80, #3b82f6);
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(45deg);
+            box-shadow: 0 3px 15px rgba(74, 222, 128, 0.5);
+        }
+
+        .connection-line {
+            position: absolute;
+            width: 250px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #4ade80, transparent);
+            top: 50%;
+            left: 35%;
+            animation: dataFlow 2s ease-in-out infinite;
+        }
+
+        @keyframes dataFlow {
+            0%, 100% { opacity: 0.3; transform: translateX(-20px); }
+            50% { opacity: 1; transform: translateX(20px); }
+        }
+
+        .data-particles {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: particleMove 2s ease-in-out infinite;
+        }
+
+        .particle-1 { top: 45%; left: 35%; animation-delay: 0s; }
+        .particle-2 { top: 50%; left: 40%; animation-delay: 0.3s; }
+        .particle-3 { top: 55%; left: 35%; animation-delay: 0.6s; }
+
+        @keyframes particleMove {
+            0% { transform: translateX(0) scale(1); opacity: 0; }
+            50% { transform: translateX(120px) scale(1.5); opacity: 1; }
+            100% { transform: translateX(240px) scale(0); opacity: 0; }
+        }
+
+        .success-checkmark {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: #4ade80;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: successPop 4s ease-in-out infinite;
+            box-shadow: 0 5px 25px rgba(74, 222, 128, 0.5);
+        }
+
+        @keyframes successPop {
+            0%, 90%, 100% { transform: scale(0); opacity: 0; }
+            95% { transform: scale(1.2); opacity: 1; }
+            97% { transform: scale(1); opacity: 1; }
+        }
+
+        .checkmark-icon {
+            color: white;
+            font-size: 30px;
+        }
+
+        /* ==================== Stats Section ==================== */
+        .stats-section {
+            padding: 0px 0;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            text-shadow: 0 5px 20px rgba(98, 113, 193, 0);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 0.7rem;
+        }
+
+        .stat-number {
+            font-size: 23px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #28859f, var(--cyan-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: #00000014;
+            background-clip: text;
+            margin-bottom: 0rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* ==================== Features Section ==================== */
+        .features-section {
+            padding: 35px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 2.2rem;
+        }
+
+        .section-badge {
+            display: inline-block;
+            background: rgba(187, 222, 232, 0.2);
+            color: var(--dark);
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 2.6rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 25px;
+            padding: 1.3rem;
+            margin-bottom: 0.6rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            transition: all 0.4s ease;
+            border: 1px solid rgba(187, 222, 232, 0.3);
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--blue-light), var(--cyan-light));
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .feature-card:hover::before {
+            opacity: 0.05;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--blue-light), var(--cyan-light));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 25px rgba(187, 222, 232, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .feature-icon i {
+            font-size: 35px;
+            color: white;
+        }
+
+        .feature-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .feature-description {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            font-size: 1.05rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ==================== Technology Section ==================== */
+        .technology-section {
+            padding: 35px 0;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+        }
+
+        .tech-logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+
+        .tech-logo {
+            background: white;
+            padding: 2rem 3rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .tech-logo:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .tech-logo i {
+            font-size: 40px;
+            color: var(--dark);
+        }
+
+        .tech-logo span {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        /* ==================== Login Section ==================== */
+        .login-section {
+            padding: 44px 0;
+        }
+
+        .login-wrapper {
+            max-width: 550px;
+            margin: 0 auto;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(15px);
+            border-radius: 30px;
+            padding: 2.5rem;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(187, 222, 232, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--blue-light), var(--cyan-light));
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #7a98c6, #67ecf4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            box-shadow: 0px 10px 25px rgba(9, 10, 11, 0.54);
+        }
+
+        .login-icon i {
+            font-size: 35px;
+            color: white;
+        }
+
+        .login-header h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.7rem;
+            font-size: 0.95rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid var(--gray-light);
+            border-radius: 14px;
+            padding: 6px 13px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.95);
+            font-size: 1rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--blue-light);
+            box-shadow: 0 0 0 0.25rem rgba(187, 222, 232, 0.25);
+            background: white;
+        }
+
+        .form-select {
+            cursor: pointer;
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 5px 10px;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+
+        .password-toggle:hover {
+            color: var(--dark);
+        }
+
+        .form-check {
+            margin: 1.5rem 0;
+        }
+
+        .form-check-input {
+            border: 2px solid var(--gray-light);
+            width: 1.2rem;
+            height: 1.2rem;
+            cursor: pointer;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--blue-light);
+            border-color: var(--blue-light);
+        }
+
+        .form-check-label {
+            color: var(--text-secondary);
+            cursor: pointer;
+            margin-left: 0.5rem;
+        }
+
+        .forgot-password {
+            color: var(--blue-light);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .forgot-password:hover {
+            color: var(--dark);
+            text-decoration: underline;
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #8aadb7, #7fa5a8);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(187, 222, 232, 0.4);
+            margin-top: 0.1rem;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(187, 222, 232, 0.5);
+        }
+
+        .divider {
+            text-align: center;
+            margin: 0.65rem 0;
+            position: relative;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 43%;
+            height: 1px;
+            background: var(--gray-light);
+        }
+
+        .divider::before {
+            left: 0;
+        }
+
+        .divider::after {
+            right: 0;
+        }
+
+        .btn-signup {
+            border: 2px solid var(--blue-light);
+            background: transparent;
+            color: var(--dark);
+            border-radius: 14px;
+            padding: 6px;
+            font-weight: 600;
+            font-size: 1rem;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .btn-signup:hover {
+            background: linear-gradient(135deg, var(--blue-light), var(--cyan-light));
+            color: white;
+            border-color: transparent;
+            transform: translateY(-2px);
+        }
+
+        /* ==================== Footer ==================== */
+        footer {
+            background: linear-gradient(135deg, #1e3a4a 0%, var(--dark) 100%);
+            color: white;
+            padding: 3rem 0 1.5rem;
+            margin-top: 15px;
+            position: relative;
+        }
+
+        footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--blue-light), var(--cyan-light));
+        }
+
+        .footer-brand {
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .footer-logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--blue-light), var(--cyan-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .footer-logo-icon i {
+            font-size: 24px;
+            color: white;
+        }
+
+        .footer-logo-text {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .footer-description {
+            color: var(--gray-light);
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: white;
+        }
+
+        .footer-links {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.9rem;
+        }
+
+        .footer-links a {
+            color: var(--gray-light);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-links a:hover {
+            color: var(--cyan-light);
+            padding-left: 8px;
+        }
+
+        .footer-links i {
+            font-size: 0.9rem;
+            width: 16px;
+        }
+
+        .social-icons {
+            display: flex;
+            gap: 12px;
+            margin-top: 1.5rem;
+        }
+
+        .social-icons a {
+            width: 48px;
+            height: 48px;
+            background: rgba(187, 222, 232, 0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+        }
+
+        .social-icons a:hover {
+            background: linear-gradient(135deg, var(--blue-light), var(--cyan-light));
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(187, 222, 232, 0.3);
+        }
+
+        .newsletter-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+
+        .newsletter-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.95rem;
+        }
+
+        .newsletter-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .newsletter-input:focus {
+            outline: none;
+            border-color: var(--cyan-light);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .newsletter-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--blue-light), var(--cyan-light));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .newsletter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(187, 222, 232, 0.4);
+        }
+
+        .copyright {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--gray-light);
+            font-size: 0.95rem;
+        }
+
+        .copyright a {
+            color: var(--cyan-light);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .copyright a:hover {
+            text-decoration: underline;
+        }
+
+        /* ==================== Scroll to Top Button ==================== */
+        .scroll-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, var(--blue-light), var(--cyan-light));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.3rem;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(187, 222, 232, 0.4);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .scroll-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-top:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(187, 222, 232, 0.5);
+        }
+
+        /* ==================== Responsive Design ==================== */
+        @media (max-width: 992px) {
+            .hero-title {
+                font-size: 3rem;
+            }
+
+            .section-title {
+                font-size: 2.3rem;
+            }
+
+            .feature-card {
+                padding: 2.5rem;
+            }
+
+            .authentication-scene {
+                height: 400px;
+            }
+
+            .device-terminal {
+                width: 240px;
+                height: 340px;
+                right: 5%;
+            }
+
+            .terminal-screen {
+                height: 270px;
+            }
+
+            .person-body {
+                width: 160px;
+                height: 280px;
+            }
+
+            .person-head {
+                width: 60px;
+                height: 60px;
+            }
+
+            .person-torso {
+                width: 100px;
+                height: 130px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-hero-primary,
+            .btn-hero-secondary {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .feature-card {
+                padding: 2rem;
+            }
+
+            .login-card {
+                padding: 2.5rem 2rem;
+            }
+
+            .stat-number {
+                font-size: 2.5rem;
+            }
+
+            .authentication-scene {
+                height: 350px;
+            }
+
+            .device-terminal {
+                width: 200px;
+                height: 300px;
+                right: 5%;
+            }
+
+            .terminal-screen {
+                height: 230px;
+            }
+
+            .face-detection-box {
+                width: 100px;
+                height: 120px;
+            }
+
+            .person-figure {
+                left: 5%;
+            }
+
+            .person-body {
+                width: 120px;
+                height: 220px;
+            }
+
+            .person-head {
+                width: 50px;
+                height: 50px;
+            }
+
+            .person-face-scan {
+                width: 60px;
+                height: 60px;
+            }
+
+            .person-torso {
+                width: 80px;
+                height: 100px;
+            }
+
+            .person-arm-right {
+                width: 30px;
+                height: 100px;
+                right: -30px;
+            }
+
+            .person-hand {
+                width: 25px;
+                height: 25px;
+            }
+
+            .connection-line {
+                width: 150px;
+                left: 30%;
+            }
+
+            .success-checkmark {
+                width: 50px;
+                height: 50px;
+                top: 20px;
+                right: 20px;
+            }
+
+            .checkmark-icon {
+                font-size: 24px;
+            }
+
+            .footer-logo-text {
+                font-size: 1.2rem;
+            }
+
+            .scroll-top {
+                width: 50px;
+                height: 50px;
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .login-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .login-header h2 {
+                font-size: 1.8rem;
+            }
+
+            .tech-logo {
+                padding: 1.5rem 2rem;
+            }
+        }
+
+        /* ==================== Loading Animation ==================== */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--cyan-light), var(--blue-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader"></div>
+    </div>
+
+    <!-- Background -->
+    <div class="background-container" id="bg-image">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg fixed-top" id="mainNavbar">
+        <div class="container">
+            <a class="navbar-brand" href="#accueil">
+                <div class="logo">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <span>SmartPresence</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#accueil">Accueil</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#fonctionnalites">Fonctionnalités</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#technologie">Technologie</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#connexion">Connexion</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contact</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="accueil" class="hero-section">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-shield-alt"></i>
+                    Technologie HIKVISION
+                </div>
+                <h1 class="hero-title">
+                    Système de Pointage <span class="highlight">Intelligent</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Digitalisation et reconnaissance faciale de pointe pour une gestion moderne, sécurisée et efficace de la présence de votre personnel
+                </p>
+                <div class="hero-buttons">
+                    <a href="#connexion" class="btn-hero-primary">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Accéder au Système
+                    </a>
+                    <a href="#fonctionnalites" class="btn-hero-secondary">
+                        <i class="fas fa-info-circle"></i>
+                        En savoir plus
+                    </a>
+                </div>
+                <div class="hero-image">
+                    <div class="authentication-scene">
+                        <!-- Person Figure -->
+                        <div class="person-figure">
+                            <div class="person-body">
+                                <div class="person-head">
+                                    <div class="person-face-scan"></div>
+                                </div>
+                                <div class="person-torso">
+                                    <div class="person-arm-right">
+                                        <div class="person-hand"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Connection Animation -->
+                        <div class="connection-line"></div>
+                        <div class="data-particles particle-1"></div>
+                        <div class="data-particles particle-2"></div>
+                        <div class="data-particles particle-3"></div>
+
+                        <!-- Terminal Device -->
+                        <div class="device-terminal">
+                            <div class="terminal-screen">
+                                <div class="scan-overlay"></div>
+                                <div class="face-detection-box">
+                                    <div class="face-corner top-left"></div>
+                                    <div class="face-corner top-right"></div>
+                                    <div class="face-corner bottom-left"></div>
+                                    <div class="face-corner bottom-right"></div>
+                                </div>
+                                <div class="status-text">Authentification...</div>
+                                <div class="success-checkmark">
+                                    <i class="fas fa-check checkmark-icon"></i>
+                                </div>
+                            </div>
+                            <div class="terminal-buttons">
+                                <div class="terminal-btn">
+                                    <i class="fas fa-fingerprint"></i><br>Empreinte
+                                </div>
+                                <div class="terminal-btn">
+                                    <i class="fas fa-face-smile"></i><br>Visage
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-item">
+                        <div class="stat-number">99.9%</div>
+                        <div class="stat-label">Précision de Reconnaissance</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-item">
+                        <div class="stat-number">&lt;1s</div>
+                        <div class="stat-label">Temps d'Identification</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-item">
+                        <div class="stat-number">24/7</div>
+                        <div class="stat-label">Disponibilité Système</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-item">
+                        <div class="stat-number">100%</div>
+                        <div class="stat-label">Sécurité des Données</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="fonctionnalites" class="features-section">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-badge">
+                    <i class="fas fa-star me-2"></i>Fonctionnalités
+                </div>
+                <h2 class="section-title">Solutions Complètes et Innovantes</h2>
+                <p class="section-subtitle">
+                    Découvrez nos fonctionnalités avancées pour optimiser la gestion de présence
+                </p>
+            </div>
+            <div class="row">
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-face-smile"></i>
+                        </div>
+                        <h3 class="feature-title">Reconnaissance Faciale IA</h3>
+                        <p class="feature-description">
+                            Intelligence artificielle HIKVISION pour identification instantanée et précise, même avec masque ou lunettes.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-cloud-arrow-up"></i>
+                        </div>
+                        <h3 class="feature-title">Accès Cloud Sécurisé</h3>
+                        <p class="feature-description">
+                            Plateforme cloud sécurisée accessible partout. Synchronisation temps réel sur tous appareils.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3 class="feature-title">Rapports Intelligents</h3>
+                        <p class="feature-description">
+                            Analyses détaillées et rapports personnalisables. Exportation Excel, PDF ou CSV en un clic.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology Section -->
+    <section id="technologie" class="technology-section">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-badge">
+                    <i class="fas fa-microchip me-2"></i>Technologie
+                </div>
+                <h2 class="section-title">Propulsé par les Leaders du Marché</h2>
+                <p class="section-subtitle">
+                    Des équipements de pointe pour une performance optimale
+                </p>
+            </div>
+            <div class="tech-logo-container">
+                <div class="tech-logo">
+                    <i class="fas fa-video"></i>
+                    <span>HIKVISION</span>
+                </div>
+                <div class="tech-logo">
+                    <i class="fas fa-microchip"></i>
+                    <span>IA Avancée</span>
+                </div>
+                <div class="tech-logo">
+                    <i class="fas fa-server"></i>
+                    <span>Cloud Sécurisé</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Section -->
+    <section id="connexion" class="login-section">
+        <div class="container">
+            <div class="login-wrapper">
+                <div class="login-card">
+                    <div class="login-header">
+                        <div class="login-icon">
+                            <i class="fas fa-user-lock"></i>
+                        </div>
+                        <h2>Connexion</h2>
+                        <p>Accédez à votre espace personnel</p>
+                    </div>
+                    <form id="loginForm" novalidate>
+                        <div class="mb-3">
+                            <label for="userType" class="form-label">
+                                <i class="fas fa-user-tag me-2"></i>Type d'utilisateur
+                            </label>
+                            <select class="form-select" id="userType" required>
+                                <option value="">Sélectionnez votre profil</option>
+                                <option value="admin">Administrateur</option>
+                                <option value="employee">Employé</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Veuillez sélectionner un type
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-user me-2"></i>Identifiant
+                            </label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="username" 
+                                placeholder="Nom d'utilisateur" 
+                                required
+                                autocomplete="username"
+                            >
+                            <div class="invalid-feedback">
+                                L'identifiant est requis
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-key me-2"></i>Mot de passe ou ID
+                            </label>
+                            <div class="password-wrapper">
+                                <input 
+                                    type="password" 
+                                    class="form-control" 
+                                    id="password" 
+                                    placeholder="Entrez votre mot de passe ou ID" 
+                                    required
+                                    autocomplete="current-password"
+                                >
+                                <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="Afficher/Masquer">
+                                    <i class="fas fa-eye" id="toggleIcon"></i>
+                                </button>
+                            </div>
+                            <div class="invalid-feedback">
+                                Le mot de passe est requis
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-login">
+                            <i class="fas fa-sign-in-alt me-2"></i>Se Connecter
+                        </button>
+                        <div class="divider">ou</div>
+                        <button type="button" class="btn btn-signup" onclick="handleSignup()">
+                            <i class="fas fa-user-plus me-2"></i>Créer un Compte
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <div class="footer-brand">
+                        <div class="footer-logo">
+                            <div class="footer-logo-icon">
+                                <i class="fas fa-user-shield"></i>
+                            </div>
+                            <span class="footer-logo-text">SmartPresence</span>
+                        </div>
+                        <p class="footer-description">
+                            Solution innovante de gestion de présence avec reconnaissance faciale intelligente. Propulsé par la technologie HIKVISION pour une sécurité et une fiabilité maximales.
+                        </p>
+                        <div class="social-icons">
+                            <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                            <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                            <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                            <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h4 class="footer-title">Navigation</h4>
+                    <ul class="footer-links">
+                        <li><a href="#accueil"><i class="fas fa-home"></i>Accueil</a></li>
+                        <li><a href="#fonctionnalites"><i class="fas fa-list"></i>Fonctionnalités</a></li>
+                        <li><a href="#technologie"><i class="fas fa-microchip"></i>Technologie</a></li>
+                        <li><a href="#connexion"><i class="fas fa-sign-in-alt"></i>Connexion</a></li>
+                        <li><a href="#"><i class="fas fa-info-circle"></i>À propos</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <h4 class="footer-title">Services</h4>
+                    <ul class="footer-links">
+                        <li><a href="#"><i class="fas fa-camera"></i>Reconnaissance faciale</a></li>
+                        <li><a href="#"><i class="fas fa-users"></i>Gestion du personnel</a></li>
+                        <li><a href="#"><i class="fas fa-chart-bar"></i>Rapports & Analyses</a></li>
+                        <li><a href="#"><i class="fas fa-headset"></i>Support technique 24/7</a></li>
+                        <li><a href="#"><i class="fas fa-book"></i>Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <h4 class="footer-title">Contact</h4>
+                    <ul class="footer-links">
+                        <li><i class="fas fa-phone"></i>+261 34 64 888 85</li>
+                        <li><i class="fas fa-envelope"></i>tianafanantenana1@gmail.com</li>
+                        <li><i class="fas fa-map-marker-alt"></i>Fianarantsoa, Madagascar</li>
+                        <li><a href="#"><i class="fas fa-question-circle"></i>Centre d'aide</a></li>
+                    </ul>
+                    <h5 class="footer-title mt-4" style="font-size: 1.1rem;">Newsletter</h5>
+                    <form class="newsletter-form" onsubmit="handleNewsletter(event)">
+                        <input type="email" class="newsletter-input" placeholder="Votre email" required>
+                        <button type="submit" class="newsletter-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>
+                    &copy; 2025 <a href="#">SmartPresence</a>. Propulsé par HIKVISION. 
+                    Tous droits réservés. | 
+                    <a href="#">Politique de confidentialité</a> | 
+                    <a href="#">Conditions d'utilisation</a>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scroll to Top Button -->
+    <div class="scroll-top" id="scrollTop" onclick="scrollToTop()">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // ==================== Loading Overlay ====================
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            }, 800);
+        });
+
+        // ==================== Navbar Scroll Effect ====================
+        window.addEventListener('scroll', function() {
+            const navbar = document.getElementById('mainNavbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // ==================== Smooth Scroll ====================
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    const navbarHeight = document.getElementById('mainNavbar').offsetHeight;
+                    const targetPosition = target.offsetTop - navbarHeight;
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                    // Close mobile menu if open
+                    const navbarCollapse = document.getElementById('navbarNav');
+                    if (navbarCollapse.classList.contains('show')) {
+                        const bsCollapse = new bootstrap.Collapse(navbarCollapse);
+                        bsCollapse.hide();
+                    }
+                }
+            });
+        });
+
+        // ==================== Scroll to Top ====================
+        window.addEventListener('scroll', function() {
+            const scrollTop = document.getElementById('scrollTop');
+            if (window.scrollY > 300) {
+                scrollTop.classList.add('visible');
+            } else {
+                scrollTop.classList.remove('visible');
+            }
+        });
+
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // ==================== Password Toggle ====================
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('toggleIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        // ==================== Form Validation ====================
+       document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Remove previous validation
+    this.classList.remove('was-validated');
+    
+    const userType = document.getElementById('userType');
+    const username = document.getElementById('username');
+    const password = document.getElementById('password');
+    
+    let isValid = true;
+    
+    // Validate user type
+    if (!userType.value) {
+        userType.classList.add('is-invalid');
+        isValid = false;
+    } else {
+        userType.classList.remove('is-invalid');
+        userType.classList.add('is-valid');
+    }
+    
+    // Validate username
+    if (!username.value.trim()) {
+        username.classList.add('is-invalid');
+        isValid = false;
+    } else {
+        username.classList.remove('is-invalid');
+        username.classList.add('is-valid');
+    }
+    
+    // Validate password
+    if (!password.value) {
+        password.classList.add('is-invalid');
+        isValid = false;
+    } else {
+        password.classList.remove('is-invalid');
+        password.classList.add('is-valid');
+    }
+    
+    if (isValid) {
+        // Créer FormData pour l'envoi
+        const formData = new FormData();
+        formData.append('username', username.value);
+        formData.append('password', password.value);
+        formData.append('userType', userType.value);
+        
+        // Afficher loading
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Connexion...';
+        // Envoyer au serveur
+        fetch('/login', {
+            method: 'POST',
+            body: formData          
+        })
+        .then(response => {
+            if (response.redirected) {
+                // Succès - redirection automatique
+                window.location.href = response.url;
+            } else {
+                return response.text();
+            }
+        })
+        .then(html => {
+            if (html) {
+                // Erreur - afficher le message
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const errorMsg = doc.querySelector('.alert-danger');
+                
+                if (errorMsg) {
+                    alert('❌ ' + errorMsg.textContent.trim());
+                } else {
+                    alert('❌ Identifiants incorrects. Veuillez réessayer.');
+                }
+                
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('❌ Erreur de connexion. Veuillez réessayer.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        });
+    }
+})
+
+        function showLoginSuccess(data) {
+            const message = `✅ Connexion réussie!\n\nProfil: ${data.type}\nUtilisateur: ${data.username}\n\nRedirection vers le tableau de bord...`;
+            alert(message);
+            
+            // Here you would normally redirect to the dashboard
+            // window.location.href = 'dashboard.html';
+        }
+
+        // ==================== Signup Handler ====================
+        function handleSignup() {
+    const userType = document.getElementById('userType').value;
+    
+    if (!userType) {
+        alert('⚠️ Veuillez sélectionner un type d\'utilisateur d\'abord');
+        return;
+    }
+    
+    if (userType === 'admin') {
+        alert('🔒 Création de compte administrateur\n\n' +
+              'Les comptes administrateurs doivent être créés par un super admin.\n\n' +
+              'Contactez:\n' +
+              '📧 Email: admin@smartpresence.mg\n' +
+              '📞 Tél: +261 34 12 345 67');
+    } else {
+        // Rediriger vers la page d'inscription externe
+        window.location.href = '/inscription';
+     }
+}
+
+// ==================== Auto-login Demo (Optionnel) ====================
+// Fonction pour remplir automatiquement le formulaire en démo
+function fillDemoCredentials(type) {
+    const userType = document.getElementById('userType');
+    const username = document.getElementById('username');
+    const password = document.getElementById('password');
+    
+    if (type === 'admin') {
+        userType.value = 'admin';
+        username.value = 'admin';
+        password.value = 'admin';
+    } else if (type === 'employee') {
+        userType.value = 'employee';
+        username.value = 'EMP001'; // À adapter selon vos données
+        password.value = 'password';
+    }
+}
+
+
+        // ==================== Newsletter Handler ====================
+        function handleNewsletter(event) {
+            event.preventDefault();
+            const email = event.target.querySelector('input[type="email"]').value;
+            alert(`✅ Merci de votre inscription!\n\nVous recevrez nos dernières actualités à l'adresse:\n${email}`);
+            event.target.reset();
+        }
+
+        // ==================== Forgot Password ====================
+        document.querySelector('.forgot-password').addEventListener('click', function(e) {
+            e.preventDefault();
+            const email = prompt('Veuillez entrer votre adresse email pour réinitialiser votre mot de passe:');
+            if (email) {
+                alert(`✅ Un email de réinitialisation a été envoyé à:\n${email}\n\nVeuillez vérifier votre boîte de réception.`);
+            }
+        });
+
+        // ==================== Animation on Scroll ====================
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe feature cards
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+
+        // ==================== Console Welcome Message ====================
+        console.log('%c🚀 SmartPresence Pro', 'color: #bbdee8; font-size: 24px; font-weight: bold;');
+        console.log('%cSystème de Pointage Intelligent avec Reconnaissance Faciale', 'color: #546e7a; font-size: 14px;');
+        console.log('%cPropulsé par HIKVISION', 'color: #2c3e50; font-size: 12px;');
+    </script>
+</body>
+</html>

@@ -1,0 +1,549 @@
+{% extends 'admin/page_ajour.html' %}
+
+{% block title %}Contrôle Caméra - Système Intelligent{% endblock %}
+
+{% block head_extra %}
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #e9f0f4, #e9f0f4, #e9f0f4);
+    color: #e0e6ed;
+  }
+
+  .sidebar {
+    background-color: #1a2634;
+    padding: 15px;
+    height: 100%;
+    border-right: 1px solid #2b3a4a;
+    color: #e0e6ed;
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .video-frame {
+    background-color: #2b3a4a;
+    width: 100%;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 5px solid #1e9ddb;
+    box-shadow: 0 0 10px rgba(30, 157, 219, 0.5);
+    border-radius: 15px;
+  }
+
+  .footer-box {
+    background-color: #263544;
+    color: #ffffff;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 5px;
+  }
+
+  .control-buttons .btn,
+  .mouvement-btn,
+  #toggleCameraBtn,
+  .alert-button {
+    font-size: 0.75rem;
+    padding: 4px 6px;
+    width: 100%;
+    margin-bottom: 5px;
+  }
+
+  .btn-sm {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+
+  .range-control label {
+    display: block;
+    margin-top: 8px;
+    font-weight: bold;
+    font-size: 0.8rem;
+  }
+
+  .range-control input[type="range"] {
+    width: 100%;
+    accent-color: #00bcd4;
+    height: 8px;
+  }
+
+  .mouvement-btn {
+    background-color: #34495e;
+    color: #ffffff;
+    font-weight: 500;
+    border: none;
+    border-radius: 5px;
+  }
+
+  .app-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #00bcd4;
+    margin-bottom: 10px;
+  }
+
+  h3, h5 {
+    color: #00bcd4;
+    font-weight: bold;
+  }
+
+  p {
+    color: #ced4da;
+    font-size: 0.85rem;
+  }
+
+  .gallery img {
+    max-height: 60px;
+    border: 2px solid #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  #modal2 {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+  }
+
+  #modal-content {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 12px;
+    width: 65%;
+    height: 60%;
+    background-color: #1e2a38;
+    padding: 10px;
+    box-shadow: 0 0 15px rgba(0, 188, 212, 0.3);
+  }
+
+  #capturedMainImage {
+    max-width: 100%;
+    border: 5px solid #00bcd4;
+    border-radius: 10px;
+  }
+
+  .card {
+    border-radius: 10px;
+    background-color: #1a2634;
+    color: #e0e6ed;
+    font-size: 0.85rem;
+  }
+
+  .card-header {
+    background-color: #00bcd4;
+    color: #fff;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+  }
+
+  .ip-panel {
+    display: none;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+  }
+
+  .menu-icon {
+    cursor: pointer;
+    font-size: 18px;
+    color: #00bcd4;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row align-items-start">
+    <!-- Sidebar Gauche -->
+    <div class="col-md-2 sidebar title-align p-4">
+      <div>
+        <div class="app-title">Système de Sécurité Intelligent</div>
+        <h5 class="text-warning fw-bold">Image et Vidéo</h5>
+        <p><strong>Image</strong> &nbsp; Vidéo</p>
+        <div id="galleryList" class="gallery" style="overflow-y: auto; display: flex; flex-direction: column; gap: 10px; max-height: 416px; height: 397px;"></div>
+        <div id="previewContainer" class="preview-main" style="display: none; position: relative; margin-top: 20px;"></div>
+      </div>
+    </div>
+
+    <!-- Centre Vidéo -->
+    <div class="col-md-8 text-center">
+      <h3 class="mt-3"><strong class="text-primary">Contrôle Caméra</strong></h3>
+      <div class="video-frame mb-3">
+        <img id="videoFeed" alt="Flux vidéo caméra" src="/video_feed" style="
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 10px;
+        display: block;
+      " /> 
+      </div>      
+      <div class="d-flex justify-content-between">
+        <div class="footer-box" id="calandre">Jour / date / mois / année</div>
+        <div class="footer-box" id="temps">Heure : min : sec | moment</div>
+        <div class="footer-box">Salle : Porte | N°01
+            <div class="menu-icon" onclick="togglePanel()">☰</div>
+                <div class="ip-panel" id="ipPanel">
+                  <label for="ipInput">Adresse IP de la webcam :</label>
+                  <input type="text" id="ipInput" placeholder="http://192.168.X.X:8080/shot.jpg" />
+                  <div class="d-flex justify-content-between gap-2">
+                      <button class="btn btn-info btn-sm flex-fill" onclick="saveIP()">Enregistrer</button>
+                      <button class="btn btn-danger btn-sm flex-fill" onclick="togglePanel()">Fermer</button>
+                  </div>
+                </div>
+             </div>
+      </div>
+      <div class="d-flex justify-content-between mt-2" style="background-color: #d2d5df;">
+        <button  class="btn btn-outline-primary fw-bold shadow" onclick="toggleESPWindow2()"> 🖥️ Porte statut</button>
+        <div class="footer-box shadow " style="background-color: #67707a;" id="alerte">statut d'alerte</div>
+        <button  class="btn btn-outline-danger fw-bold shadow alert-btn" onclick="toggleAlerte()">🚨 Alerte</button>
+      </div>
+    </div>
+
+    <!-- Panneau Droit - Contrôle -->
+    <div class="col-md-2 sidebar pt-controle">
+      <h5>Contrôle d'action</h5>
+      <div class="row g-2 control-buttons mt-3">
+        <div class="col-6 d-grid"><button class="btn btn-success btn-sm" onclick="startFeed()">Démarrer</button></div>
+        <div class="col-6 d-grid"><button class="btn btn-danger btn-sm" onclick="stopFeed()">Arrêter</button></div>
+        <div class="col-6 d-grid"><button class="btn btn-warning btn-sm" onclick="captureImage()">Capturer</button></div>
+        <div class="col-6 d-grid"><button class="btn btn-primary btn-sm" onclick="toggleFlash()">Flash</button></div>
+        <div class="col-12"><button class="mouvement-btn btn-sm" onclick="toggleMotion()">Mouvement : <span id="motionState">désactivée</span></button></div>
+        <button id="toggleCameraBtn" class="btn btn-secondary btn-sm mt-1">Basculer Caméra</button>
+      </div>
+
+      <div class="range-control mt-3">
+        <label for="zoom">Zoom: <span id="zoomValue">1x</span></label>
+        <input type="range" id="range_zoom" min="1" max="60" value="1" oninput="updateZoom(this.value)">
+        <label for="luminosite">Luminosité: <span id="exposureValue">0</span></label>
+        <input type="range" id="range_exposure" min="-10" max="10" value="0" oninput="updateExposure(this.value)">
+        <label for="qualite">Qualité : <span id="qualityValue">49%</span></label>
+        <input type="range" id="range_quality" min="1" max="100" value="49" oninput="updateQuality(this.value)">
+      </div>
+      <button class="alert-button btn-sm mt-2">🚨 Simuler alerte</button>
+      <button class="btn btn-outline-info btn-sm mt-2"
+      onclick="fetch('/record')
+        .then(res => res.json())
+        .then(data => console.log('[📹 RECORD]', data.message || data.error))">
+      🎥 Capturer video
+    </button>
+    </div>
+  </div>
+</div>
+
+<!-- Fenêtre d'état ESP32 -->
+<div id="esp32StatusWindow" class="card position-fixed shadow-lg border-primary" style="width: 300px; right: -320px; top: 80px; z-index: 1050; transition: right 0.4s ease-in-out;">
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-cpu-fill me-2"></i>Status du système</span>
+    <button class="btn-close btn-close-white" onclick="toggleESPWindow2()" aria-label="Close"></button>
+  </div>
+  <div class="card-body text-dark" id="esp32StatusContent">
+    <p><strong>Connexion :</strong> <span class="text-muted">En attente...</span></p>
+    <p><strong>Dernière réponse :</strong> <span class="text-muted">-</span></p>
+    <p><strong>Signal :</strong> <span class="text-muted">-</span></p>
+  </div>
+</div>
+
+<!-- Modal pour aperçu image -->
+<div id="modal2">
+  <div id="modal-content">
+    <button class="btn btn-sm btn-outline-danger hide-btn" onclick="hidePreview()" style="position: absolute; top: 10px; right: 10px; z-index: 99;">❌ Fermer</button>
+    <img id="capturedMainImage" src="" style="max-width: 100%; border: 5px solid #001146d1; border-radius: 10px;">
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let baseUrl = "";
+let feedInterval, lastImageData = null;
+let flashOn = false, motionDetectionOn = false;
+let isFrontCamera = false;
+let alerteActive = false;
+let lastAlertName = "";
+
+// Éléments du DOM avec guards
+const videoFeed = document.getElementById("videoFeed");
+const previewMain = document.getElementById("capturedMainImage");
+const previewContainer = document.getElementById("previewContainer");
+const galleryList = document.getElementById("galleryList");
+const motionStateLabel = document.getElementById("motionState");
+const calandre = document.getElementById('calandre');
+const temps = document.getElementById('temps');
+const ipInput = document.getElementById("ipInput");
+const alerteStatus = document.getElementById("alerte");
+
+// Récupérer l'IP sélectionnée depuis le backend
+async function updateBaseUrl() {
+  try {
+    const response = await fetch("/get_ip");
+    const data = await response.json();
+    baseUrl = "http://" + data.ip;
+    console.log("IP récupérée :", baseUrl);
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'URL de la caméra :", error);
+  }
+}
+
+// Démarrer le flux
+function startFeed() {
+  if (!videoFeed) return;
+  stopFeed();
+  feedInterval = setInterval(() => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = `${baseUrl}/shot.jpg?t=${Date.now()}`;
+    img.onload = () => videoFeed.src = img.src;
+    img.onerror = () => console.warn("⚠️ Flux non disponible.");
+  }, 500);
+}
+
+// Arrêter le flux
+function stopFeed() {
+  clearInterval(feedInterval);
+  if (videoFeed) videoFeed.src = "";
+}
+
+// Capture image
+function captureImage() {
+  if (!videoFeed || !galleryList) return;
+  
+  const img = new Image();
+  img.crossOrigin = "Anonymous";
+  img.src = `${baseUrl}/shot.jpg?${Date.now()}`;
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const url = canvas.toDataURL('image/jpeg');
+
+    const thumb = document.createElement('img');
+    thumb.src = url;
+    thumb.onclick = () => showPreview(url);
+    galleryList.appendChild(thumb);
+
+    fetch("/capture-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: url })
+    }).then(res => res.json())
+      .then(data => console.log(data.message))
+      .catch(err => console.error("Erreur:", err));
+  };
+}
+
+// Activer/Désactiver flash
+function toggleFlash() {
+  flashOn = !flashOn;
+  const action = flashOn ? "enabletorch" : "disabletorch";
+  fetch(`${baseUrl}/${action}`)
+    .then(() => console.log(`🔦 Flash ${flashOn ? 'activé' : 'désactivé'}`))
+    .catch(() => alert("Erreur d'accès au flash"));
+}
+
+// Activer/désactiver la détection de mouvement
+function toggleMotion() {
+  motionDetectionOn = !motionDetectionOn;
+  if (motionStateLabel) motionStateLabel.textContent = motionDetectionOn ? "activée" : "désactivée";
+}
+
+// Zoom
+function updateZoom(value) {
+  const zoomEl = document.getElementById("zoomValue");
+  if (zoomEl) zoomEl.textContent = `${value}x`;
+  fetch(`${baseUrl}/ptz?zoom=${value}`);
+}
+
+// Luminosité (exposure)
+function updateExposure(value) {
+  const expEl = document.getElementById("exposureValue");
+  if (expEl) expEl.textContent = value;
+  fetch(`${baseUrl}/settings/exposure?set=${value}`);
+}
+
+// Qualité vidéo
+function updateQuality(value) {
+  const qualEl = document.getElementById("qualityValue");
+  if (qualEl) qualEl.textContent = `${value}%`;
+  fetch(`${baseUrl}/settings/videoquality?set=${value}`);
+}
+
+// Bascule caméra frontale
+const toggleCameraBtn = document.getElementById("toggleCameraBtn");
+if (toggleCameraBtn) {
+  toggleCameraBtn.addEventListener("click", () => {
+    if (!isFrontCamera) {
+      fetch(`${baseUrl}/settings/ffc?set=on`)
+        .then(res => {
+          if (res.ok) {
+            isFrontCamera = true;
+            alert("Caméra frontale activée ✅");
+          } else {
+            alert("❌ Impossible d'activer la caméra frontale.");
+          }
+        })
+        .catch(() => alert("Erreur de communication avec la caméra."));
+    } else {
+      alert("🔁 Redémarrer manuellement l'application pour revenir à la caméra arrière.");
+    }
+  });
+}
+
+// Affichage horloge et date
+function updateClock() {
+  const now = new Date();
+  const jour = now.toLocaleDateString('fr-FR', { weekday: 'long' });
+  const jourNum = now.getDate();
+  const mois = now.toLocaleDateString('fr-FR', { month: 'long' });
+  const annee = now.getFullYear();
+  const heure = now.getHours();
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  const seconde = String(now.getSeconds()).padStart(2, '0');
+  let moment = heure < 12 ? "Matin" : (heure < 18 ? "Après-midi" : "Soir");
+
+  if (calandre) calandre.textContent = `📅 ${jour} ${jourNum} - ${mois} - ${annee}`;
+  if (temps) temps.textContent = `🕓 ${heure}:${minute}:${seconde} - ${moment}`;
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+
+// Statut visage
+function checkFaceStatus() {
+  const alerte_status = document.getElementById("alerte");
+  if (!alerte_status) return;
+  
+  fetch("/face_status")
+    .then(res => res.json())
+    .then(data => {
+      const name = data.name;
+      if (name !== lastAlertName && name !== "Aucun") {
+        if (name === "Inconnu") {
+          captureImage();
+          alerte_status.textContent = "🚫 Visage inconnu détecté !";
+        } else {
+          alerte_status.textContent = "✅ Visage reconnu : " + name;
+        }
+        lastAlertName = name;
+      }
+    });
+}
+
+setInterval(checkFaceStatus, 5000);
+
+// Bascule panneau IP
+function togglePanel() {
+  const panel = document.getElementById("ipPanel");
+  if (!panel) return;
+  panel.style.display = (panel.style.display === "none" || panel.style.display === "") ? "block" : "none";
+}
+
+// Sauvegarder l'IP manuellement
+async function saveIP() {
+  const ip = ipInput.value.trim();
+  if (!ip) return alert("Veuillez entrer une adresse IP.");
+  try {
+    const formData = new FormData();
+    formData.append("ip", ip);
+    await fetch("/set_ip", {
+      method: "POST",
+      body: formData
+    });
+    localStorage.setItem("CAM_URL", ip);
+    await updateBaseUrl();
+    window.location.reload();
+  } catch (err) {
+    console.error("Erreur lors de l'envoi IP :", err);
+  }
+}
+
+// Sélecteur IP
+const ipSelector = document.getElementById("ipSelector");
+if (ipSelector) {
+  ipSelector.addEventListener("change", function () {
+    const selectedIP = this.value;
+    fetch("/select_ip", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "selected_ip=" + encodeURIComponent(selectedIP)
+    })
+    .then(response => response.text())
+    .then(data => {
+      console.log("IP sélectionnée :", selectedIP);
+      alert("Connexion à l'IP : " + selectedIP);
+      updateBaseUrl();
+    });
+  });
+}
+
+// Alerte manuelle
+function toggleAlerte() {
+  alerteActive = !alerteActive;
+  const btn = document.querySelector('.alert-btn');
+  if (btn && alerteStatus) {
+    if (alerteActive) {
+      btn.textContent = "✅ Alerte Activée";
+      btn.classList.replace("btn-outline-danger", "btn-success");
+      alerteStatus.textContent = "🚨 ALERTE ACTIVÉE";
+      alerteStatus.style.color = "red";
+    } else {
+      btn.textContent = "🚨 Alerte";
+      btn.classList.replace("btn-success", "btn-outline-danger");
+      alerteStatus.textContent = "Aucune alerte";
+      alerteStatus.style.color = "black";
+    }
+  }
+}
+
+// Simuler alerte (bouton texte)
+const alertButton = document.querySelector('.alert-button');
+if (alertButton) {
+  alertButton.addEventListener("click", () => {
+    alert("🚨 Alerte simulée !");
+  });
+}
+
+// Affichage image en grand
+function showPreview(url) {
+  if (previewMain) {
+    previewMain.src = url;
+    const modal = document.getElementById("modal2");
+    if (modal) modal.style.display = "block";
+  }
+}
+
+function hidePreview() {
+  if (previewContainer) previewContainer.style.display = "none";
+  const modal = document.getElementById("modal2");
+  if (modal) modal.style.display = "none";
+}
+
+// ESP32 fenêtre (slide)
+function toggleESPWindow2() {
+  const espWindow = document.getElementById('esp32StatusWindow');
+  if (espWindow) {
+    espWindow.style.right = (espWindow.style.right === "20px") ? "-320px" : "20px";
+  }
+}
+
+// ⚡ Lance automatiquement au chargement de la page
+document.addEventListener("DOMContentLoaded", async () => {
+  await updateBaseUrl();
+  console.log("✅ Page contrôle chargée");
+});
+
+// Mise à jour régulière de l'IP
+setInterval(updateBaseUrl, 20000);
+</script>
+{% endblock %}

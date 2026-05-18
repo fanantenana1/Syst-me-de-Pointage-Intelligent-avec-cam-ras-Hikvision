@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liste des Utilisateurs</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #e9f0f4, #f8f9fa);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .topbar {
+      background-color: #0d6efd;
+      color: white;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .topbar h4 {
+      margin: 0;
+    }
+    .table thead {
+      background-color: #0d6efd;
+      color: white;
+    }
+    .table tbody tr:hover {
+      background-color: #e8f0fe;
+    }
+    .profile-pic {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 2px solid #0d6efd;
+      transition: transform 0.3s ease;
+    }
+    .profile-pic:hover {
+      transform: scale(1.05);
+    }
+    .btn-sm {
+      font-size: 0.8rem;
+      padding: 4px 8px;
+    }
+    .actions a {
+      margin-right: 5px;
+    }
+    .table td, .table th {
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar container-fluid">
+  <h4>👤 Gestion des Utilisateurs</h4>
+  <a href="/logout" class="btn btn-light btn-sm">🔒 Déconnexion</a>
+</div>
+
+<div class="container mt-4">
+  {% if users %}
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle text-center shadow-sm rounded">
+      <thead class="table-primary">
+        <tr>
+          <th>Profil</th>
+          <th>Nom complet</th>
+          <th>Email</th>
+          <th>Téléphone</th>
+          <th>Ajouté le</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>
+            <img src="{{ user.photos[0] if user.photos else '/static/default.png' }}" alt="Photo" class="profile-pic">
+          </td>
+          <td>
+            <strong>{{ user.name }}</strong><br>
+            <small class="text-muted">{{ user.cin }}</small>
+          </td>
+          <td>{{ user.email or 'Non renseigné' }}</td>
+          <td>{{ user.telephone or 'Non renseigné' }}</td>
+          <td>{{ user.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td class="actions">
+            <a href="/modifier_user/{{ user._id }}" class="btn btn-outline-primary btn-sm">✏️ Modifier</a>
+            <a href="/supprimer_user/{{ user._id }}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Confirmer la suppression ?')">🗑️ Supprimer</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-info text-center">Aucun utilisateur enregistré pour le moment.</div>
+  {% endif %}
+</div>
+
+</body>
+</html>

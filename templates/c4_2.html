@@ -1,0 +1,799 @@
+{% extends 'admin/page_ajour.html' %}
+
+{% block title %}Contrôle camera{% endblock %}
+{% block page_header %}
+    <i class="fas fa-camera"></i> Contrôle caméra à distance
+{% endblock %}
+{% block head_extra %}
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: linear-gradient(180deg, #D8E9EB, #F3F7F8, #E7F0F2);
+      font-family: 'Arial', sans-serif;
+      color: #333;
+      min-height: 100vh;
+      padding: 0;
+    }
+    .header {
+      background: #0d1f2d;
+      padding: 4px 44px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: none;
+    }
+    .header-logo {
+      color: #4a9fbf;
+      font-size: 20px;
+    }
+    .header-buttons {
+      display: flex;
+      gap: 20px;
+    }
+    .header-btn {
+      background: transparent;
+      color: #4a9fbf;
+      padding: 2px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+      transition: all 0.3s;
+    }
+    .header-btn:hover {
+      background: #4a9fbf;
+      color: white;
+    }
+    .header-btn.disconnect {
+      border-color: #d9534f;
+      color: #d9534f;
+    }
+    .header-btn.disconnect:hover {
+      background: #d9534f;
+      color: white;
+    }
+    /*
+    .title-section {
+      text-align: center;
+      padding: 15px 20px;
+      color: #145567;
+      font-size: 26px;
+      font-weight: bold;
+      font-style: italic;
+      text-shadow: 0 3px 3px rgba(28, 95, 128, 0.61);
+    }*/
+    .main-container {
+      display: flex;
+      gap: 15px;
+      padding: 0px 20px 15px 20px;
+      max-width: 100%;
+      margin: 0 auto;
+      height: calc(104vh - 140px);
+      background: #e8f3f7;
+    }
+    .left-panel {
+      width: 246px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: linear-gradient(180deg, #BBDEE8, #D9F7F9);
+      border: 1px solid #C5D6E4;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .card-section {
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+      background: linear-gradient(180deg, #91CED9, #DBEFF9);
+      border: 1px solid #F8FCFF;
+      max-height:460px;
+    }
+    .card-title {
+      font-weight: bold;
+      color: #0d1f2d;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .check-icon {
+      background: #4caf50;
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .nom-box {
+      width: 100%;
+      height: 40px;
+      background: linear-gradient(135deg, #f4f7f9 0%, #e4f2f7 100%);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #14161e;
+      margin-bottom: 8px;
+      border: 2px solid #baddf0;
+      font-size: 12px;
+    }
+    .record-btn {
+      width: 100%;
+      padding: 5px;
+      background: #3d5a6f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: auto;
+      border: 2px solid #9cf1f9;
+    }
+    .record-btn:hover {
+      background: #2d4a5f;
+    }
+    .center-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .video-container {
+      background: linear-gradient(180deg, #557F91, #DAE9EF);
+      border-radius: 8px;
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid #a0c8dd;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+    .video-feed {
+      flex: 1;
+      background: linear-gradient(186deg, #557F91, #DAE9EF);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      position: relative;
+      border: 2px solid #E0F4FB;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+      max-height: 93%;
+    }
+    .stream-selector {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+    }
+    .stream-selector select {
+      background-color: rgba(13, 31, 45, 0.85);
+      color: #4a9fbf;
+      border: 2px solid #4a9fbf;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .stream-selector select:hover {
+      background-color: rgba(13, 31, 45, 0.95);
+    }
+    .timestamp {
+      padding: 5px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #0d7a99;
+      font-weight: bold;
+      font-size: 11px;
+    }
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .stats-table th, .stats-table td {
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #a2a4a6;
+      background: #fff;
+      font-size: 12px;
+    }
+    .stats-table th {
+      background: #eaf8ff;
+      font-weight: bold;
+      color: #0d1f2d;
+    }
+    .stats-table td {
+      color: #0d1f2d;
+      font-weight: bold;
+    }
+    .control-btn {
+      width: 100%;
+      padding: 5px;
+      background: #2C515E;
+      color: white;
+      border: 2px solid #75CBF4;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 12px;
+    }
+    .control-btn:hover {
+      background: #2d4a5f;
+      transform: translateY(-1px);
+    }
+    .control-btn.alert {
+      background: #d9534f;
+      padding-bottom: 2px;
+      margin-bottom: 2px;
+    }
+    .control-btn.alert:hover {
+      background: #c9433f;
+    }
+    .slider-container {
+      background: #b0d4e3;
+      padding: 10px;
+      border-radius: 6px;
+      border: 2px solid #a0c8dd;
+      margin-bottom: 5px;
+    }
+    .slider-label {
+      color: #0d1f2d;
+      font-weight: bold;
+      display: block;
+      font-size: 12px;
+    }
+    .slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #a0c8dd;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      margin-bottom: 6px;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #0d7a99;
+      cursor: pointer;
+      border: 2px solid white;
+    }
+    .slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #0d7a99;
+      cursor: pointer;
+      border: 2px solid white;
+    }
+    .right-panel {
+      background: linear-gradient(180deg, #BBDEE8, #D9F7F9);
+      border-radius: 5px;
+      border: 1px solid #C5D6E4;
+      padding: 15px;
+      width: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ip-display {
+      background: white;
+      padding: 1px;
+      border-radius: 5px;
+      text-align: center;
+      color: #333;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    .ip-display select {
+      width: 100%;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: white;
+      cursor: pointer;
+    }
+    .gallery-box {
+      width: 100%;
+      max-height: 400px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 2px;
+      background: linear-gradient(135deg, #9CBAC2, #E0E9EB, #E0E9EB, #9CBAC2);
+      border-radius: 6px;
+      border: 2px solid #8EDCEA;
+      min-height: 95px;
+    }
+    .gallery-box img {
+      width: 100%;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 2px solid #8EDCEA;
+      cursor: pointer;
+    }
+    select.form-select {
+      appearance: auto;
+      -webkit-appearance: auto;
+      -moz-appearance: auto;
+    }
+    select {
+      background: none;
+      border: none;
+    }
+    #modal2 {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 2000;
+    }
+    #modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 12px;
+      width: 65%;
+      background: linear-gradient(135deg, #9cbac2bb, #E0E9EB, #E0E9EB, #9CBAC2);
+      padding: 2px;
+      box-shadow: 0 0 15px rgba(3, 192, 217, 0.3);
+    }
+    a {
+      text-decoration: none;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <!-- Titre (optional, can override in parent) 
+  <div class="title-section">Contrôle aux Frontières et dans les Aéroports</div>
+
+  <!-- Conteneur principal -->
+  <div class="main-container">
+    <!-- Panneau gauche -->
+    <div class="left-panel">
+      <div class="card-section">
+        <div class="card-title"><div class="check-icon">✓</div>Visage reconnu</div>
+        <div class="nom-box">Photo user</div>
+      </div>
+      <div class="card-section">
+        <div class="card-title">Visage inconnu</div>
+        <div id="galleryList" class="gallery-box">
+          <div id="previewContainer" class="preview-main" style="display: none; position: relative; margin-top: 20px;"></div>
+        </div>
+      </div>
+      <button class="record-btn" onclick="window.location.href='/historique'">Visage enregistrée</button>
+    </div>
+
+    <!-- Panneau central -->
+    <div class="center-panel">
+      <div class="video-container">
+        <div class="video-feed">
+          <!-- Sélecteur de source vidéo -->
+          <div class="stream-selector">
+            <select id="streamSource" onchange="switchVideoSource()">
+              <option value="rtsp">📹 Caméra RTSP Hikvision</option>
+              <option value="ip">📱 Caméra IP/Autre</option>
+            </select>
+          </div>
+          
+          <!-- Flux vidéo -->
+          <img id="videoFeed" alt="Flux vidéo caméra" src="/video_feed_rtsp" style="
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+            display: block;
+          "/>
+        </div>
+        <div class="timestamp">
+          <span id="calandre">Date</span>
+          <span id="temps">Heure</span>
+          <span id="porteInfo">Porte / N°01</span>
+        </div>
+      </div>
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>Événement</th>
+            <th>Utilisateur Inconnu</th>
+            <th>Utilisateur Connu</th>
+            <th>Fraude</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Total</td>
+            <td id="unknownCount">0</td>
+            <td id="knownCount">0</td>
+            <td id="fraudCount">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Panneau droit -->
+    <div class="right-panel">
+      <button id="toggleFeedBtn" class="control-btn" onclick="toggleFeed()">Démarrer</button>
+      <button class="control-btn" onclick="captureImage()">Capturer</button>
+      <button id="flashBtn" class="control-btn" onclick="toggleFlash()">Flash : OFF</button>
+      <button class="control-btn" onclick="toggleMotion()">Mouvement : <span id="motionState">désactivée</span></button>
+      <button class="control-btn" onclick="toggleCamera()">Basculer Caméra</button>
+
+      <div class="slider-container">
+        <div class="slider-label">Zoom: <span id="zoomValue">1X</span></div>
+        <input type="range" id="range_zoom" min="0" max="100" value="0" class="slider" oninput="updateZoom(this.value)" />
+      </div>
+
+      <div class="slider-container">
+        <div class="slider-label">Luminosité: <span id="exposureValue">30</span></div>
+        <input type="range" id="range_exposure" min="0" max="100" value="30" class="slider" oninput="updateExposure(this.value)" />
+      </div>
+
+      <div class="slider-container">
+        <div class="slider-label">Qualité : <span id="qualityValue">40%</span></div>
+        <input type="range" id="range_quality" min="1" max="100" value="40" class="slider" oninput="updateQuality(this.value)" />
+      </div>
+
+      <button class="control-btn alert" onclick="toggleAlerte()">Simuler alerte</button>
+      <button class="control-btn" onclick="recordVideo()">🎥 Capturer video</button>
+
+      <div class="ip-display">
+        <select id="ipSelector" class="form-select">
+          {% if ports %}
+          {% for port, ips in ports.items() %}
+            {% for ip in ips %}
+            <option value="{{ ip }}">{{ port }} - {{ ip }}</option>
+            {% endfor %}
+          {% endfor %}
+          {% else %}
+          <option value="0.0.0.0">0.0.0.0:8080</option>
+          {% endif %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal d'image -->
+  <div id="modal2">
+    <div id="modal-content">
+      <button class="btn btn-sm btn-outline-danger hide-btn" onclick="hidePreview()" style="position: absolute; top: 6px; right: 6px; z-index: 99;">✖ Fermer</button>
+      <img id="capturedMainImage" src="" style="max-width: 100%; border: 2px solid #75CBF4; border-radius: 10px;">
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    let baseUrl = "";
+    let feedInterval;
+    let flashOn = false;
+    let motionDetectionOn = false;
+    let isFrontCamera = false;
+    let alerteActive = false;
+    let lastAlertName = "";
+    let isFeedRunning = false;
+    let currentStreamSource = "rtsp"; // Par défaut : RTSP
+    let unknownCount = 0;
+    let knownCount = 0;
+    let fraudCount = 0;
+
+    const videoFeed = document.getElementById("videoFeed");
+    const motionStateLabel = document.getElementById("motionState");
+    const ipSelector = document.getElementById("ipSelector");
+    const galleryList = document.getElementById("galleryList");
+    const previewContainer = document.getElementById("previewContainer");
+    const previewMain = document.getElementById("capturedMainImage");
+
+    // Basculer entre les sources vidéo
+    function switchVideoSource() {
+      const source = document.getElementById("streamSource").value;
+      currentStreamSource = source;
+      
+      if (source === "rtsp") {
+        stopFeed(); // Arrête le flux IP si actif
+        videoFeed.src = "/video_feed_rtsp?" + Date.now();
+        console.log("📹 Flux RTSP Hikvision activé");
+      } else {
+        videoFeed.src = "/video_feed?" + Date.now();
+        console.log("📱 Flux IP/ESP32 activé");
+      }
+    }
+
+    // Récupérer l'IP depuis le backend
+    async function updateBaseUrl() {
+      try {
+        const response = await fetch("/get_ip");
+        const data = await response.json();
+        baseUrl = "http://" + data.ip;
+        console.log("IP récupérée :", baseUrl);
+      } catch (error) {
+        console.error("Erreur lors de la récupération de l'IP :", error);
+      }
+    }
+
+    // Toggle Démarrer/Arrêter
+    function toggleFeed() {
+      const btn = document.getElementById("toggleFeedBtn");
+
+      if (!isFeedRunning) {
+        startFeed();
+        btn.textContent = "Arrêter";
+        isFeedRunning = true;
+      } else {
+        stopFeed();
+        btn.textContent = "Démarrer";
+        isFeedRunning = false;
+      }
+    }
+
+    // Démarrer le flux vidéo
+    function startFeed() {
+      if (currentStreamSource === "rtsp") {
+        videoFeed.src = "/video_feed_rtsp?" + Date.now();
+        console.log("✅ Flux RTSP démarré");
+      } else {
+        stopFeed();
+        feedInterval = setInterval(() => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.src = `${baseUrl}/shot.jpg?t=${Date.now()}`;
+          img.onload = () => {
+            videoFeed.src = img.src;
+          };
+          img.onerror = () => {
+            console.warn("Flux non disponible.");
+          };
+        }, 500);
+      }
+    }
+
+    // Arrêter le flux vidéo
+    function stopFeed() {
+      clearInterval(feedInterval);
+      if (currentStreamSource !== "rtsp") {
+        videoFeed.src = "";
+      }
+    }
+
+    // Capturer une image
+    function captureImage() {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoFeed.naturalWidth || 640;
+      canvas.height = videoFeed.naturalHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoFeed, 0, 0);
+      const url = canvas.toDataURL('image/jpeg');
+
+      const thumb = document.createElement('img');
+      thumb.src = url;
+      thumb.alt = "Capture";
+      thumb.onclick = () => showPreview(url);
+
+      if (galleryList) {
+        galleryList.prepend(thumb);
+      }
+
+      fetch("/capture-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: url })
+      })
+        .then(res => res.json())
+        .then(data => console.log(data.message))
+        .catch(err => console.error("Erreur:", err));
+    }
+
+    // Affichage image en grand
+    function showPreview(url) {
+      previewMain.src = url;
+      document.getElementById("modal2").style.display = "block";
+    }
+
+    function hidePreview() {
+      previewContainer.style.display = "none";
+      document.getElementById("modal2").style.display = "none";
+    }
+
+    // Activer/Désactiver le flash
+    function toggleFlash() {
+      flashOn = !flashOn;
+      const action = flashOn ? "enabletorch" : "disabletorch";
+      const flashBtn = document.getElementById("flashBtn");
+
+      fetch(`${baseUrl}/${action}`)
+        .then(() => {
+          console.log(`Flash ${flashOn ? "activé" : "désactivé"}`);
+          flashBtn.textContent = `Flash : ${flashOn ? "ON" : "OFF"}`;
+        })
+        .catch(() => {
+          alert("Erreur d'accès au flash");
+          flashOn = !flashOn;
+          flashBtn.textContent = `Flash : ${flashOn ? "ON" : "OFF"}`;
+        });
+    }
+
+    // Activer/Désactiver la détection de mouvement
+    function toggleMotion() {
+      motionDetectionOn = !motionDetectionOn;
+      motionStateLabel.textContent = motionDetectionOn ? "activée" : "désactivée";
+    }
+
+    // Zoom
+    function updateZoom(value) {
+      document.getElementById("zoomValue").textContent = `${value}X`;
+      fetch(`${baseUrl}/ptz?zoom=${value}`);
+    }
+
+    // Luminosité
+    function updateExposure(value) {
+      document.getElementById("exposureValue").textContent = value;
+      fetch(`${baseUrl}/settings/exposure?set=${value}`);
+    }
+
+    // Qualité vidéo
+    function updateQuality(value) {
+      document.getElementById("qualityValue").textContent = `${value}%`;
+      fetch(`${baseUrl}/settings/videoquality?set=${value}`);
+    }
+
+    // Bascule caméra frontale
+    function toggleCamera() {
+      if (!isFrontCamera) {
+        fetch(`${baseUrl}/settings/ffc?set=on`)
+          .then(res => {
+            if (res.ok) {
+              isFrontCamera = true;
+              alert("Caméra frontale activée");
+            } else {
+              alert("Impossible d'activer la caméra frontale.");
+            }
+          })
+          .catch(() => alert("Erreur de communication avec la caméra."));
+      } else {
+        alert("Redémarrer manuellement l'application pour revenir à la caméra arrière.");
+      }
+    }
+
+    // Simuler une alerte manuelle
+    function toggleAlerte() {
+      alerteActive = !alerteActive;
+      alert(alerteActive ? "🚨 ALERTE ACTIVÉE" : "Alerte désactivée");
+    }
+
+    // Enregistrement vidéo
+    function recordVideo() {
+      fetch('/record')
+        .then(res => res.json())
+        .then(data => {
+          console.log('[🎬 RECORD]', data.message || data.error);
+          alert(data.message || data.error);
+        })
+        .catch(err => console.error("Erreur d'enregistrement:", err));
+    }
+
+    // Sélection IP manuelle
+    if (ipSelector) {
+      ipSelector.addEventListener("change", function () {
+        const selectedIP = this.value;
+        const selectedText = this.options[this.selectedIndex].text;
+        const match = selectedText.match(/CAM(\d+)/);
+
+        if (match) {
+          const numero = match[1];
+          const porteSpan = document.getElementById("porteInfo");
+          if (porteSpan) {
+            porteSpan.textContent = `Porte / N°${numero}`;
+          }
+        }
+
+        fetch("/select_ip", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "selected_ip=" + encodeURIComponent(selectedIP)
+        })
+          .then(response => response.text())
+          .then(data => {
+            console.log("IP sélectionnée :", selectedIP);
+            updateBaseUrl();
+          });
+      });
+    }
+
+    // Horloge en temps réel
+    function updateClock() {
+      const now = new Date();
+      const jour = now.toLocaleDateString('fr-FR', { weekday: 'long' });
+      const jourNum = now.getDate();
+      const mois = now.toLocaleDateString('fr-FR', { month: 'long' });
+      const annee = now.getFullYear();
+      const heure = now.getHours();
+      const minute = String(now.getMinutes()).padStart(2, '0');
+      const seconde = String(now.getSeconds()).padStart(2, '0');
+      const moment = heure < 12 ? "Matin" : (heure < 18 ? "Après-midi" : "Soir");
+
+      const calandre = document.getElementById("calandre");
+      const temps = document.getElementById("temps");
+
+      if (calandre) {
+        calandre.textContent = `${jour} ${jourNum} - ${mois} - ${annee}`;
+      }
+      if (temps) {
+        temps.textContent = `${heure}:${minute}:${seconde} - ${moment}`;
+      }
+    }
+
+    // Vérification du statut facial
+    function checkFaceStatus() {
+      fetch("/face_status")
+        .then(res => res.json())
+        .then(data => {
+          const name = data.name;
+
+          if (name !== lastAlertName && name !== "Aucun") {
+            if (name === "Inconnu") {
+              captureImage();
+              unknownCount++;
+              fraudCount++;
+              document.getElementById("unknownCount").textContent = unknownCount;
+              document.getElementById("fraudCount").textContent = fraudCount;
+              
+              if (motionStateLabel) {
+                motionStateLabel.textContent = "⚠️ Visage inconnu détecté";
+                motionStateLabel.style.color = "red";
+              }
+            } else {
+              knownCount++;
+              document.getElementById("knownCount").textContent = knownCount;
+              
+              if (motionStateLabel) {
+                motionStateLabel.textContent = `✅ Visage reconnu : ${name}`;
+                motionStateLabel.style.color = "green";
+              }
+            }
+            lastAlertName = name;
+          }
+        })
+        .catch(err => console.error("Erreur lors de la vérification du visage :", err));
+    }
+
+    // Initialisation au chargement de la page
+    document.addEventListener("DOMContentLoaded", async () => {
+      await updateBaseUrl();
+      console.log("✅ Page chargée - Flux RTSP par défaut");
+      updateClock();
+    });
+
+    // Intervalles réguliers
+    setInterval(updateBaseUrl, 20000);
+    setInterval(updateClock, 1000);
+    setInterval(checkFaceStatus, 5000);
+  </script>
+{% endblock %}

@@ -1,0 +1,1664 @@
+{% extends 'admin/page_ajour.html' %}
+
+{% block title %}Gestion des Présences - Hikvision{% endblock %}
+
+{% block page_header %}
+    <i class="bi bi-calendar-check"></i> Gestion des Présences
+{% endblock %}
+
+{% block head_extra %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+        }
+
+        body {
+            background: linear-gradient(180deg, #D8E9EB, #F3F7F8, #E7F0F2);
+            min-height: 100vh;
+            padding: 0px 0;
+        }
+
+        .main-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 1400px;
+        }
+
+        .stats-card {
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: white;
+            transition: transform 0.3s;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stats-card.total {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .stats-card.validated {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+        }
+
+        .stats-card.refused {
+            background: linear-gradient(135deg, #eb3349, #f45c43);
+        }
+
+        .stats-card.unique {
+            background: linear-gradient(135deg, #fa709a, #fee140);
+        }
+
+        .filter-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .table thead th {
+            border: none;
+            padding: 15px;
+            font-weight: 600;
+        }
+
+        .badge-validated {
+            background: var(--success-color);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .badge-refused {
+            background: var(--danger-color);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .btn-custom {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-custom:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .user-stats-table {
+            margin-top: 30px;
+        }
+
+        .period-badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .period-matin { background: #ffeaa7; color: #2d3436; }
+        .period-apres-midi { background: #fdcb6e; color: #2d3436; }
+        .period-soir { background: #fd79a8; color: white; }
+        .period-nuit { background: #6c5ce7; color: white; }
+
+        .export-section {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .detail-icon {
+            cursor: pointer;
+            font-size: 1.3rem;
+            color: #667eea;
+            transition: all 0.3s;
+        }
+
+        .detail-icon:hover {
+            color: #764ba2;
+            transform: scale(1.2);
+        }
+
+        .user-photo {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid #667eea;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .no-photo {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+            border: 4px solid #667eea;
+        }
+
+        .event-timeline {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .event-item {
+            border-left: 3px solid #667eea;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .event-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .event-item.validated {
+            border-left-color: var(--success-color);
+        }
+
+        .event-item.refused {
+            border-left-color: var(--danger-color);
+        }
+
+        .modal-header-custom {
+            background: linear-gradient(135deg, #3d4144, #4e5053);
+            color: rgb(93, 152, 240);
+        }
+
+        .stat-mini-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+
+        .stat-mini-card h3 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .stat-mini-card.success h3 { color: var(--success-color); }
+        .stat-mini-card.danger h3 { color: var(--danger-color); }
+        .stat-mini-card.primary h3 { color: #667eea; }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+            margin: 20px 0;
+        }
+
+        .editable-field {
+            background: #fff3cd;
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px dashed #ffc107;
+        }
+
+        .btn-edit {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+        }
+
+        .event-actions {
+            margin-top: 10px;
+        }
+
+        .event-actions button {
+            margin-right: 5px;
+            padding: 3px 8px;
+            font-size: 0.8rem;
+        }
+
+        .event-timeline::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .event-timeline::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .event-timeline::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .event-timeline::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+
+        .info-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            margin: 5px 5px 5px 0;
+            font-size: 0.9rem;
+        }
+
+        .info-badge i {
+            margin-right: 5px;
+            color: #667eea;
+        }
+
+        /* ========================================
+           🎯 POSITIONNEMENT MODAL CENTRÉ
+           ======================================== */
+
+        /* Force le modal au-dessus de tout */
+        .modal-backdrop {
+            z-index: 1040 !important;
+        }
+
+        .modal {
+            z-index: 1050 !important;
+        }
+
+        /* Centrage du modal entre sidebar et bord droit */
+        .modal.show .modal-dialog {
+            position: fixed !important;
+            left: 260px !important; /* Largeur de la sidebar */
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            width: calc(100vw - 260px - 32px) !important; /* Largeur disponible moins marges */
+            max-width: 1200px !important; /* Largeur max du modal */
+            margin: 0 auto !important;
+            right: 32px !important;
+            z-index: 1060 !important;
+            pointer-events: auto !important;
+        }
+
+        /* Modal content cliquable */
+        .modal.show .modal-content {
+            position: relative;
+            z-index: 1070 !important;
+            pointer-events: auto !important;
+        }
+
+        /* Backdrop cliquable pour fermer */
+        .modal-backdrop.show {
+            opacity: 0.5;
+            pointer-events: auto !important;
+        }
+
+        /* Ajustement si sidebar est réduite */
+        @media (min-width: 993px) {
+            .app-shell.sidebar-collapsed ~ .modal.show .modal-dialog,
+            body.sidebar-collapsed .modal.show .modal-dialog {
+                left: 56px !important; /* Largeur sidebar réduite */
+                width: calc(100vw - 56px - 32px) !important;
+            }
+        }
+
+        /* Responsive : plein écran sur mobile */
+        @media (max-width: 992px) {
+            .modal.show .modal-dialog {
+                left: 16px !important;
+                right: 16px !important;
+                width: calc(100vw - 32px) !important;
+                max-width: calc(100vw - 32px) !important;
+                margin: 0 !important;
+            }
+        }
+
+        /* Scrollable si contenu trop grand */
+        .modal-body {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .modal-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- ========================================
+         🔄 LOADING OVERLAY
+         ======================================== -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <div class="container-fluid main-container">
+        
+        <!-- ========================================
+             ⚙️ CONFIGURATION & FILTRES
+             ======================================== -->
+        <div class="filter-section">
+            <h5><i class="bi bi-gear"></i> Filtres de Présence</h5>
+            <div class="row g-3 align-items-end">
+                <!-- Connexion actuelle -->
+                <div class="col-md-3">
+                    <label class="form-label">
+                        <i class="bi bi-hdd-network"></i> Connexion
+                        <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                onclick="debugConfig()" 
+                                style="float:right;padding:2px 6px;font-size:10px;"
+                                title="Debug configuration">
+                            <i class="bi bi-bug"></i>
+                        </button>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-primary text-white" id="connectionStatus">
+                            <i class="bi bi-wifi"></i>
+                        </span>
+                        <input type="text" class="form-control" id="currentConnection" 
+                               value="Non configuré" readonly>
+                    </div>
+                </div>
+
+                <!-- Type de filtre -->
+                <div class="col-md-3">
+                    <label class="form-label">Type de filtre</label>
+                    <select class="form-select" id="filterType">
+                        <option value="filtered">Utilisateurs MongoDB uniquement</option>
+                        <option value="all">Tous les événements</option>
+                    </select>
+                </div>
+
+                <!-- Bouton Charger -->
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100 btn-custom" onclick="loadPresences()">
+                        <i class="bi bi-search"></i> Charger les présences
+                    </button>
+                </div>
+
+                <!-- Bouton Actualiser -->
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-outline-secondary w-100 btn-custom" onclick="refreshConnection()">
+                        <i class="bi bi-arrow-clockwise"></i> Actualiser
+                    </button>
+                </div>
+            </div>
+
+            <!-- Avertissement connexion -->
+            <div id="connectionWarning" class="alert alert-warning mt-3" style="display:none;">
+                <i class="bi bi-exclamation-triangle"></i> 
+                <strong>Aucune connexion configurée.</strong> 
+                Veuillez configurer la connexion dans la barre latérale.
+            </div>
+        </div>
+
+        <!-- ========================================
+             📊 STATISTIQUES GLOBALES
+             ======================================== -->
+        <div class="row" id="statsSection" style="display: none;">
+            <div class="col-md-3">
+                <div class="stats-card total">
+                    <h3 id="totalEvents">0</h3>
+                    <p><i class="bi bi-list-check"></i> Total événements</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card validated">
+                    <h3 id="validatedEvents">0</h3>
+                    <p><i class="bi bi-check-circle"></i> Validés</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card refused">
+                    <h3 id="refusedEvents">0</h3>
+                    <p><i class="bi bi-x-circle"></i> Refusés</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card unique">
+                    <h3 id="uniqueUsers">0</h3>
+                    <p><i class="bi bi-people"></i> Utilisateurs uniques</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================
+             🔍 FILTRES AVANCÉS
+             ======================================== -->
+        <div class="filter-section" id="advancedFilters" style="display: none;">
+            <h5><i class="bi bi-funnel"></i> Filtres avancés</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Date début</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date fin</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Rechercher utilisateur</label>
+                    <input type="text" class="form-control" id="searchUser" placeholder="Nom ou ID">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Statut</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="all">Tous</option>
+                        <option value="validated">Validés uniquement</option>
+                        <option value="refused">Refusés uniquement</option>
+                    </select>
+                </div>
+            </div>
+            <div class="export-section">
+                <button class="btn btn-success btn-custom" onclick="exportToCSV()">
+                    <i class="bi bi-download"></i> Exporter en CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- ========================================
+             👥 STATISTIQUES PAR UTILISATEUR
+             ======================================== -->
+        <div class="user-stats-table" id="userStatsSection" style="display: none;">
+            <h5><i class="bi bi-person-lines-fill"></i> Statistiques par utilisateur</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>ID Employé</th>
+                            <th>Nom</th>
+                            <th>Total</th>
+                            <th>Validés</th>
+                            <th>Refusés</th>
+                            <th>Taux de réussite</th>
+                            <th>Détails</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userStatsBody">
+                        <!-- Données chargées dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========================================
+             📋 TABLEAU DES PRÉSENCES
+             ======================================== -->
+        <div class="table-container" id="tableContainer" style="display: none;">
+            <h5><i class="bi bi-table"></i> Événements de présence</h5>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID Employé</th>
+                            <th>Nom</th>
+                            <th>Type</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                            <th>Heure</th>
+                            <th>Jour</th>
+                            <th>Période</th>
+                            <th>Code</th>
+                        </tr>
+                    </thead>
+                    <tbody id="presencesTableBody">
+                        <!-- Données chargées dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+   <script>
+// ========================================
+// 🌐 VARIABLES GLOBALES
+// ========================================
+let allEvents = [];
+let currentEvents = [];
+let userDetailsModal;
+let pieChart, timelineChart;
+let editMode = false;
+let currentUserData = null;
+let currentConfig = null;
+
+// ========================================
+// 🔧 GESTION DE LA CONFIGURATION
+// ========================================
+async function getDeviceConfig() {
+    try {
+        const res = await fetch('/api/get_device_config');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.config) {
+                console.log('📡 Config depuis serveur:', data.config);
+                localStorage.setItem('hikConnectionConfig', JSON.stringify(data.config));
+                return data.config;
+            }
+        }
+        
+        const saved = localStorage.getItem('hikConnectionConfig');
+        if (saved) {
+            const config = JSON.parse(saved);
+            console.log('💾 Config depuis localStorage:', config);
+            return config;
+        }
+        
+        if (typeof window.getHikConnectionConfig === 'function') {
+            const config = window.getHikConnectionConfig();
+            console.log('🌐 Config depuis fonction globale:', config);
+            return {
+                ip: config.ip,
+                username: config.username,
+                password: config.password,
+                port: config.port || 80
+            };
+        }
+        
+        return null;
+    } catch(e) {
+        console.error('❌ Erreur getDeviceConfig:', e);
+        return null;
+    }
+}
+
+async function updateConnectionDisplay() {
+    const config = await getDeviceConfig();
+    const connectionInput = document.getElementById('currentConnection');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const connectionWarning = document.getElementById('connectionWarning');
+    
+    if (config && config.ip && config.username) {
+        currentConfig = config;
+        connectionInput.value = `${config.ip} (${config.username})`;
+        connectionStatus.className = 'input-group-text bg-success text-white';
+        connectionStatus.innerHTML = '<i class="bi bi-check-circle"></i>';
+        connectionWarning.style.display = 'none';
+        console.log('✅ Configuration chargée:', config);
+        return true;
+    } else {
+        currentConfig = null;
+        connectionInput.value = 'Non configuré';
+        connectionStatus.className = 'input-group-text bg-danger text-white';
+        connectionStatus.innerHTML = '<i class="bi bi-x-circle"></i>';
+        connectionWarning.style.display = 'block';
+        console.warn('⚠️ Aucune configuration trouvée');
+        return false;
+    }
+}
+
+function refreshConnection() {
+    updateConnectionDisplay().then(isConfigured => {
+        if (isConfigured) {
+            showNotification('✅ Connexion mise à jour', 'success');
+        } else {
+            showNotification('⚠️ Aucune connexion configurée', 'warning');
+        }
+    });
+}
+
+function debugConfig() {
+    console.log('🔍 DEBUG - currentConfig:', currentConfig);
+    console.log('🔍 DEBUG - localStorage:', localStorage.getItem('hikConnectionConfig'));
+    getDeviceConfig().then(config => {
+        console.log('🔍 DEBUG - getDeviceConfig():', config);
+        alert('Configuration actuelle:\n\n' + JSON.stringify(config, null, 2));
+    });
+}
+
+// ========================================
+// 📢 NOTIFICATIONS & UI
+// ========================================
+function showNotification(message, type = 'info') {
+    const colors = {
+        success: '#27ae60',
+        error: '#e74c3c',
+        warning: '#f39c12',
+        info: '#3498db'
+    };
+    
+    const notif = document.createElement('div');
+    notif.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 15px 20px;
+        background: ${colors[type]};
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        font-weight: 500;
+        animation: slideIn 0.3s ease;
+    `;
+    notif.textContent = message;
+    document.body.appendChild(notif);
+    
+    setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+    }, 3000);
+}
+
+function showLoading() {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ========================================
+// 📥 CHARGEMENT DES DONNÉES
+// ========================================
+async function loadPresences() {
+    const config = await getDeviceConfig();
+    
+    if (!config || !config.ip || !config.username || !config.password) {
+        showNotification('⚠️ Veuillez configurer la connexion dans la barre latérale', 'warning');
+        await updateConnectionDisplay();
+        return;
+    }
+
+    const filterType = document.getElementById('filterType').value;
+    showLoading();
+
+    try {
+        const endpoint = filterType === 'filtered' 
+            ? '/api/presences/filtered' 
+            : '/api/presences';
+
+        const url = `${endpoint}?device_ip=${encodeURIComponent(config.ip)}&username=${encodeURIComponent(config.username)}&password=${encodeURIComponent(config.password)}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.success) {
+            // ✅ FILTRER dès la récupération - exclure les événements sans identification
+            const rawEvents = data.events || [];
+            allEvents = rawEvents.filter(event => 
+                event.employee_id && event.employee_id !== '-' && 
+                event.name && event.name !== '-'
+            );
+            
+            currentEvents = [...allEvents];
+            
+            displayStatistics(data);
+            displayPresences(currentEvents);
+            const userStats = calculateUserStats(currentEvents);
+            const classifiedStats = applyPersonClassification(userStats);
+            displayUserStats(classifiedStats);
+            
+            document.getElementById('statsSection').style.display = 'flex';
+            document.getElementById('advancedFilters').style.display = 'block';
+            document.getElementById('tableContainer').style.display = 'block';
+            document.getElementById('userStatsSection').style.display = 'block';
+            
+            showNotification(`✅ ${allEvents.length} événements chargés (utilisateurs identifiés)`, 'success');
+        } else {
+            showNotification('❌ Erreur: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('❌ Erreur de connexion: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ========================================
+// 📊 AFFICHAGE DES STATISTIQUES
+// ========================================
+function displayStatistics(data) {
+    // ✅ FILTRER les événements identifiés uniquement
+    const identifiedEvents = currentEvents.filter(event => 
+        event.employee_id && event.employee_id !== '-' && 
+        event.name && event.name !== '-'
+    );
+
+    const stats = {
+        total: identifiedEvents.length,
+        validated: identifiedEvents.length, // Tous identifiés = tous validés
+        refused: 0,
+        unique_employees: new Set(identifiedEvents.map(e => e.employee_id)).size
+    };
+
+    document.getElementById('totalEvents').textContent = stats.total;
+    document.getElementById('validatedEvents').textContent = stats.validated;
+    document.getElementById('refusedEvents').textContent = stats.refused;
+    document.getElementById('uniqueUsers').textContent = stats.unique_employees;
+}
+
+function calculateUserStats(events) {
+    const stats = {};
+    
+    events.forEach(event => {
+        const key = `${event.employee_id}-${event.name}`;
+        if (!stats[key]) {
+            stats[key] = {
+                employee_id: event.employee_id,
+                name: event.name,
+                total: 0,
+                validated: 0,
+                refused: 0,
+                events: []
+            };
+        }
+        
+        stats[key].total++;
+        stats[key].events.push(event);
+        if (event.validated === 'Validé') {
+            stats[key].validated++;
+        } else {
+            stats[key].refused++;
+        }
+    });
+    
+    return Object.values(stats);
+}
+
+// ========================================
+// 🎯 CLASSIFICATION PAR PERSONNE IDENTIFIÉE
+// ========================================
+function applyPersonClassification(userStats) {
+    return userStats.map(stat => {
+        const isIdentified = stat.employee_id && stat.employee_id !== '-' && 
+                            stat.name && stat.name !== '-';
+        
+        if (isIdentified) {
+            // Personne identifiée: tous les événements = validés
+            return {
+                ...stat,
+                validated: stat.total,
+                refused: 0
+            };
+        } else {
+            // Personne non identifiée: tous les événements = refusés
+            return {
+                ...stat,
+                validated: 0,
+                refused: stat.total
+            };
+        }
+    });
+}
+
+// ========================================
+// 📋 AFFICHAGE DES TABLEAUX
+// ========================================
+function displayPresences(events) {
+    const tbody = document.getElementById('presencesTableBody');
+    tbody.innerHTML = '';
+
+    // ✅ FILTRER : Exclure les événements sans nom
+    const filteredEvents = events.filter(event => 
+        event.employee_id && event.employee_id !== '-' && 
+        event.name && event.name !== '-'
+    );
+
+    filteredEvents.forEach(event => {
+        const row = document.createElement('tr');
+        
+        const statusBadge = event.validated === 'Validé' 
+            ? '<span class="badge badge-validated">✅ Validé</span>'
+            : '<span class="badge badge-refused">❌ Refusé</span>';
+
+        const periodClass = `period-${event.period.toLowerCase().replace('è', 'e').replace('é', 'e').replace('-', '-')}`;
+        const periodBadge = `<span class="period-badge ${periodClass}">${event.period}</span>`;
+
+        row.innerHTML = `
+            <td>${event.employee_id}</td>
+            <td><strong>${event.name}</strong></td>
+            <td>${event.method}</td>
+            <td>${statusBadge}</td>
+            <td>${event.date}</td>
+            <td>${event.time}</td>
+            <td>${event.day}</td>
+            <td>${periodBadge}</td>
+            <td><small>(${event.major},${event.minor})</small></td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    // ✅ AFFICHER MESSAGE SI AUCUN ÉVÉNEMENT
+    if (filteredEvents.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                    <i class="bi bi-info-circle"></i> 
+                    Aucun événement trouvé pour les utilisateurs enregistrés
+                </td>
+            </tr>
+        `;
+    }
+}
+
+    // ========================================
+    // 👥 GESTION DES UTILISATEURS ENREGISTRÉS
+    // ========================================
+    async function loadRegisteredUsers() {
+        if (!currentConfig) return;
+        
+        try {
+            // Get users from MongoDB
+            const mongoResponse = await fetch(`/api/users/list?device_ip=${encodeURIComponent(currentConfig.ip)}&username=${encodeURIComponent(currentConfig.username)}&password=${encodeURIComponent(currentConfig.password)}`);
+            
+            if (!mongoResponse.ok) {
+                throw new Error(`HTTP error! status: ${mongoResponse.status}`);
+            }
+            
+            const mongoData = await mongoResponse.json();
+            
+            if (mongoData.status === 'success') {
+                registeredUsers = mongoData.users || [];
+                console.log(`✅ Loaded ${registeredUsers.length} registered users`);
+            } else {
+                console.warn('⚠️ Failed to load users:', mongoData.message);
+                registeredUsers = [];
+            }
+        } catch (error) {
+            console.error('❌ Error loading registered users:', error);
+            registeredUsers = [];
+            showNotification('⚠️ Erreur lors du chargement des utilisateurs enregistrés', 'warning');
+        }
+    }
+
+    // ========================================
+    // 📊 AFFICHAGE DES STATISTIQUES PAR UTILISATEUR
+    // ========================================
+    function displayUserStats(userStats) {
+        const tbody = document.getElementById('userStatsBody');
+        tbody.innerHTML = '';
+        
+        if (!userStats || userStats.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center">
+                        <div class="empty-state">
+                            <i class="bi bi-people"></i>
+                            <div class="empty-state-text">Aucune statistique disponible</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // Sort by total events descending
+        userStats.sort((a, b) => b.total - a.total);
+        
+        userStats.forEach(stat => {
+            const successRate = stat.total > 0 ? ((stat.validated / stat.total) * 100).toFixed(1) : 0;
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+                <td>${stat.employee_id || '-'}</td>
+                <td><strong>${stat.name || 'Inconnu'}</strong></td>
+                <td><span class="badge bg-primary">${stat.total}</span></td>
+                <td><span class="badge bg-success">${stat.validated}</span></td>
+                <td><span class="badge bg-danger">${stat.refused}</span></td>
+                <td>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: ${successRate}%">${successRate}%</div>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <i class="bi bi-info-circle-fill detail-icon" 
+                       onclick="showUserDetails('${stat.employee_id || ''}', '${(stat.name || 'Inconnu').replace(/'/g, "\\'")}')"></i>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // ========================================
+    // 📋 AFFICHAGE DES ÉVÉNEMENTS DE PRÉSENCE
+    // ========================================
+    function displayPresenceEvents(events) {
+        const eventsList = document.getElementById('eventsList');
+        const eventsCount = document.getElementById('eventsCount');
+        
+        eventsList.innerHTML = '';
+        eventsCount.textContent = `${events.length} événement${events.length !== 1 ? 's' : ''}`;
+        
+        if (events.length === 0) {
+            eventsList.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <div class="empty-state-text">Aucun événement trouvé</div>
+                    <div class="empty-state-subtext">Modifiez vos filtres pour voir plus de résultats</div>
+                </div>
+            `;
+            return;
+        }
+        
+        events.forEach(event => {
+            const isIdentified = event.employee_id && event.employee_id !== '-' && 
+                                event.name && event.name !== '-';
+            const isRegistered = isUserRegistered(event.employee_id, event.name);
+            
+            let statusClass = 'unknown';
+            let statusText = 'Non identifié';
+            
+            if (isIdentified) {
+                if (isRegistered) {
+                    statusClass = 'present';
+                    statusText = 'Présent';
+                } else {
+                    statusClass = 'unknown';
+                    statusText = 'Identifié mais non enregistré';
+                }
+            } else {
+                if (isRegistered) {
+                    statusClass = 'absent';
+                    statusText = 'Absent';
+                } else {
+                    statusClass = 'unknown';
+                    statusText = 'Non identifié';
+                }
+            }
+            
+            const eventCard = document.createElement('div');
+            eventCard.className = `event-card ${statusClass}`;
+            eventCard.innerHTML = `
+                <div class="event-main-info">
+                    <div class="event-employee">
+                        <i class="bi bi-person"></i> 
+                        ${event.name !== '-' ? event.name : 'Inconnu'} 
+                        <small class="text-muted">(${event.employee_id !== '-' ? event.employee_id : 'Non identifié'})</small>
+                    </div>
+                    <div class="event-datetime">
+                        <i class="bi bi-calendar"></i> ${event.date} 
+                        <i class="bi bi-clock"></i> ${event.time}
+                    </div>
+                </div>
+                <div class="event-details">
+                    <div class="event-detail-item">
+                        <i class="bi bi-door-open"></i> Porte ${event.door_no}
+                    </div>
+                    <div class="event-detail-item">
+                        <i class="bi bi-fingerprint"></i> ${event.method}
+                    </div>
+                    <div class="event-detail-item">
+                        <i class="bi bi-sun"></i> ${event.period}
+                    </div>
+                    <div class="event-detail-item">
+                        <span class="status-badge status-${statusClass}">${statusText}</span>
+                    </div>
+                </div>
+            `;
+            eventsList.appendChild(eventCard);
+        });
+    }
+
+// ========================================
+// 👤 MODAL DÉTAILS UTILISATEUR
+// ========================================
+async function showUserDetails(employeeId, userName) {
+    if (!currentConfig) {
+        showNotification('⚠️ Configuration manquante', 'warning');
+        return;
+    }
+    
+    showLoading();
+
+    const userEvents = allEvents.filter(e => 
+        e.employee_id === employeeId || e.name === userName
+    );
+
+    if (userEvents.length === 0) {
+        hideLoading();
+        showNotification('❌ Aucun événement trouvé pour cet utilisateur', 'error');
+        return;
+    }
+
+    const firstEvent = userEvents[0];
+    currentUserData = {
+        employee_id: employeeId,
+        name: userName,
+        cin: firstEvent.cin || '',
+        email: firstEvent.email || '',
+        telephone: firstEvent.telephone || '',
+        address: firstEvent.address || '',
+        carte_number: firstEvent.carte_number || '',
+        fingerprint_id: firstEvent.fingerprint_id || '',
+        photo_url: null
+    };
+
+    try {
+        const photoResponse = await fetch(`/api/user/photo?employee_id=${encodeURIComponent(employeeId)}&device_ip=${encodeURIComponent(currentConfig.ip)}`);
+        const photoData = await photoResponse.json();
+        
+        if (photoData.success && photoData.has_photo) {
+            currentUserData.photo_url = photoData.photo_url;
+        }
+    } catch (error) {
+        console.error('Erreur récupération photo:', error);
+    }
+
+    // Appliquer la classification: basée sur l'identification de la personne
+    const isIdentified = employeeId && employeeId !== '-' && userName && userName !== '-';
+    
+    let validated, refused;
+    if (isIdentified) {
+        // Personne identifiée: tous les événements sont validés
+        validated = userEvents;
+        refused = [];
+    } else {
+        // Personne non identifiée: tous les événements sont refusés
+        validated = [];
+        refused = userEvents;
+    }
+
+    document.getElementById('modalUserName').textContent = userName;
+    document.getElementById('modalEmployeeId').textContent = `ID: ${employeeId}`;
+    document.getElementById('modalTotalEvents').textContent = userEvents.length;
+    document.getElementById('modalValidatedEvents').textContent = validated.length;
+    document.getElementById('modalRefusedEvents').textContent = refused.length;
+
+    const photoContainer = document.getElementById('userPhotoContainer');
+    if (currentUserData.photo_url) {
+        photoContainer.innerHTML = `
+            <img src="${currentUserData.photo_url}" 
+                 class="user-photo" 
+                 alt="${userName}"
+                 onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'no-photo\\'><i class=\\'bi bi-person\\'></i></div>';">
+        `;
+    } else {
+        photoContainer.innerHTML = `<div class="no-photo"><i class="bi bi-person"></i></div>`;
+    }
+
+    displayUserInfo();
+    displayEventTimeline(userEvents, isIdentified);
+    createCharts(validated, refused, userEvents);
+   
+    hideLoading();
+
+    // ✅ AFFICHAGE MODAL OPTIMISÉ
+    const modalElement = document.getElementById('userDetailsModal');
+    
+    if (modalElement && modalElement.parentElement !== document.body) {
+        document.body.appendChild(modalElement);
+    }
+
+    if (!userDetailsModal && modalElement) {
+        userDetailsModal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+    }
+    
+    if (userDetailsModal) userDetailsModal.show();
+    
+    setTimeout(() => {
+        if (!modalElement) return;
+        modalElement.classList.add('show');
+        modalElement.style.display = 'block';
+        document.body.classList.add('modal-open');
+        
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.style.zIndex = '1040';
+        }
+    }, 100);
+}
+
+function displayUserInfo() {
+    const infoCard = document.getElementById('userInfoCard');
+    const editClass = editMode ? 'editable-field' : '';
+    
+    infoCard.innerHTML = `
+        <div class="mb-3">
+            <strong><i class="bi bi-card-text"></i> CIN:</strong>
+            <div class="${editClass}" data-field="cin">${currentUserData.cin || 'Non renseigné'}</div>
+        </div>
+        <div class="mb-3">
+            <strong><i class="bi bi-envelope"></i> Email:</strong>
+            <div class="${editClass}" data-field="email">${currentUserData.email || 'Non renseigné'}</div>
+        </div>
+        <div class="mb-3">
+            <strong><i class="bi bi-telephone"></i> Téléphone:</strong>
+            <div class="${editClass}" data-field="telephone">${currentUserData.telephone || 'Non renseigné'}</div>
+        </div>
+        <div class="mb-3">
+            <strong><i class="bi bi-geo-alt"></i> Adresse:</strong>
+            <div class="${editClass}" data-field="address">${currentUserData.address || 'Non renseigné'}</div>
+        </div>
+        <div class="mb-3">
+            <strong><i class="bi bi-credit-card"></i> N° Carte:</strong>
+            <div class="${editClass}" data-field="carte_number">${currentUserData.carte_number || 'Non renseigné'}</div>
+        </div>
+        <div class="mb-3">
+            <strong><i class="bi bi-fingerprint"></i> Empreinte ID:</strong>
+            <div class="${editClass}" data-field="fingerprint_id">${currentUserData.fingerprint_id || 'Non renseigné'}</div>
+        </div>
+    `;
+
+    if (editMode) {
+        document.querySelectorAll('.editable-field').forEach(field => {
+            const fieldName = field.getAttribute('data-field');
+            const currentValue = currentUserData[fieldName] || '';
+            field.innerHTML = `<input type="text" class="form-control form-control-sm" 
+                                      value="${currentValue}" 
+                                      data-field="${fieldName}">`;
+        });
+    }
+}
+
+function displayEventTimeline(userEvents, isPersonIdentified) {
+    const timeline = document.getElementById('eventTimeline');
+    timeline.innerHTML = '';
+
+    userEvents.sort((a, b) => {
+        const dateA = new Date(a.datetime);
+        const dateB = new Date(b.datetime);
+        return dateB - dateA;
+    });
+
+    userEvents.forEach((event, index) => {
+        // Appliquer la classification basée sur l'identification
+        const eventClass = isPersonIdentified ? 'validated' : 'refused';
+        const statusIcon = isPersonIdentified ? '✅' : '❌';
+        const statusColor = isPersonIdentified ? 'success' : 'danger';
+        const newStatus = isPersonIdentified ? 'Validé' : 'Refusé';
+
+        const eventDiv = document.createElement('div');
+        eventDiv.className = `event-item ${eventClass}`;
+        eventDiv.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-1">
+                        ${statusIcon} <strong>${event.method}</strong> - 
+                        <span class="badge bg-${statusColor}">${newStatus}</span>
+                    </h6>
+                    <p class="mb-1 text-muted">
+                        <i class="bi bi-calendar"></i> ${event.date} 
+                        <i class="bi bi-clock ms-2"></i> ${event.time}
+                        <span class="badge bg-secondary ms-2">${event.day}</span>
+                        <span class="badge bg-info ms-1">${event.period}</span>
+                    </p>
+                    <small class="text-muted">
+                        <i class="bi bi-door-open"></i> Porte: ${event.door_no} | 
+                        Code: (${event.major},${event.minor})<br/>
+                        <em style="color: #999;">Original Hikvision: ${event.validated}</em>
+                    </small>
+                </div>
+                <div class="event-actions">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editEvent(${index}, '${event.datetime}')">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteEvent('${event.datetime}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        timeline.appendChild(eventDiv);
+    });
+}
+
+function createCharts(validated, refused, allUserEvents) {
+    if (pieChart) pieChart.destroy();
+    if (timelineChart) timelineChart.destroy();
+
+    const pieCtx = document.getElementById('pieChart').getContext('2d');
+    pieChart = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Validés', 'Refusés'],
+            datasets: [{
+                data: [validated.length, refused.length],
+                backgroundColor: ['#27ae60', '#e74c3c'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                title: {
+                    display: true,
+                    text: 'Répartition Validé/Refusé'
+                }
+            }
+        }
+    });
+
+    const periodCounts = {
+        'Matin': 0,
+        'Après-midi': 0,
+        'Soir': 0,
+        'Nuit': 0
+    };
+
+    allUserEvents.forEach(event => {
+        if (periodCounts.hasOwnProperty(event.period)) {
+            periodCounts[event.period]++;
+        }
+    });
+
+    const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+    timelineChart = new Chart(timelineCtx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(periodCounts),
+            datasets: [{
+                label: 'Événements par période',
+                data: Object.values(periodCounts),
+                backgroundColor: ['#ffeaa7', '#fdcb6e', '#fd79a8', '#6c5ce7'],
+                borderColor: ['#f9ca24', '#f0932b', '#eb4d4b', '#6c5ce7'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'Présences par période'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 }
+                }
+            }
+        }
+    });
+}
+
+// ========================================
+// ✏️ ÉDITION DES DONNÉES
+// ========================================
+    function toggleEditMode() {
+        editMode = !editMode;
+        displayUserInfo();
+        
+        const saveBtn = document.getElementById('saveChangesBtn');
+        if (editMode) {
+            saveBtn.style.display = 'inline-block';
+        } else {
+            saveBtn.style.display = 'none';
+        }
+    }
+
+    async function saveUserChanges() {
+        if (!currentConfig) {
+            showNotification('⚠️ Configuration manquante', 'warning');
+            return;
+        }
+
+        const inputs = document.querySelectorAll('.editable-field input');
+        const updates = {};
+        
+        inputs.forEach(input => {
+            const field = input.getAttribute('data-field');
+            updates[field] = input.value;
+        });
+
+        showLoading();
+
+        try {
+            const url = `/api/hik_user?device_ip=${encodeURIComponent(currentConfig.ip)}&username=${encodeURIComponent(currentConfig.username)}&password=${encodeURIComponent(currentConfig.password)}&employee_no=${encodeURIComponent(currentUserData.employee_id)}&cin=${encodeURIComponent(updates.cin || '')}&email=${encodeURIComponent(updates.email || '')}&telephone=${encodeURIComponent(updates.telephone || '')}&address=${encodeURIComponent(updates.address || '')}&carte_number=${encodeURIComponent(updates.carte_number || '')}&fingerprint_id=${encodeURIComponent(updates.fingerprint_id || '')}`;
+
+            const response = await fetch(url, { method: 'PUT' });
+            const result = await response.json();
+
+            if (result.success || result.mongodb_updated) {
+                showNotification('✅ Modifications enregistrées avec succès!', 'success');
+                Object.assign(currentUserData, updates);
+                editMode = false;
+                displayUserInfo();
+                document.getElementById('saveChangesBtn').style.display = 'none';
+                await loadPresences();
+            } else {
+                showNotification('⚠️ Erreur lors de la sauvegarde', 'error');
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            showNotification('❌ Erreur de connexion', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+async function editEvent(index, datetime) {
+        if (!currentConfig) {
+            showNotification('⚠️ Configuration manquante', 'warning');
+            return;
+        }
+        
+        const userEvents = allEvents.filter(e => 
+            e.employee_id === currentUserData.employee_id || e.name === currentUserData.name
+        );
+        
+        const event = userEvents.find(e => e.datetime === datetime);
+        if (!event) {
+            showNotification('❌ Événement introuvable', 'error');
+            return;
+        }
+
+        const newStatus = prompt(
+            `Modifier le statut de l'événement:\n\n` +
+            `Date: ${event.date} ${event.time}\n` +
+            `Statut actuel: ${event.validated}\n` +
+            `Méthode: ${event.method}\n\n` +
+            `Nouveau statut (Validé/Refusé):`,
+            event.validated
+        );
+
+        if (!newStatus || (newStatus !== 'Validé' && newStatus !== 'Refusé')) {
+            return;
+        }
+
+        const notes = prompt('Notes sur la modification (optionnel):');
+        showLoading();
+
+        try {
+            const url = `/api/presence/event?device_ip=${encodeURIComponent(currentConfig.ip)}&username=${encodeURIComponent(currentConfig.username)}&password=${encodeURIComponent(currentConfig.password)}&event_datetime=${encodeURIComponent(datetime)}&employee_id=${encodeURIComponent(currentUserData.employee_id)}&new_status=${encodeURIComponent(newStatus)}${notes ? '&notes=' + encodeURIComponent(notes) : ''}`;
+
+            const response = await fetch(url, { method: 'PUT' });
+            const result = await response.json();
+
+            if (result.success) {
+                showNotification('✅ Modification enregistrée!', 'success');
+                alert('✅ Modification enregistrée!\n\nNote: Les modifications sont enregistrées localement. L\'événement original Hikvision reste inchangé.');
+                await showUserDetails(currentUserData.employee_id, currentUserData.name);
+            } else {
+                showNotification('❌ Erreur: ' + result.error, 'error');
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            showNotification('❌ Erreur de connexion: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function deleteEvent(datetime) {
+        if (!currentConfig) {
+            showNotification('⚠️ Configuration manquante', 'warning');
+            return;
+        }
+        
+        if (!confirm(
+            '⚠️ ATTENTION\n\n' +
+            'Voulez-vous vraiment marquer cet événement comme supprimé?\n\n' +
+            'Note: L\'événement sera masqué mais restera dans la base Hikvision.'
+        )) {
+            return;
+        }
+
+        showLoading();
+
+        try {
+            const url = `/api/presence/event?device_ip=${encodeURIComponent(currentConfig.ip)}&username=${encodeURIComponent(currentConfig.username)}&password=${encodeURIComponent(currentConfig.password)}&event_datetime=${encodeURIComponent(datetime)}&employee_id=${encodeURIComponent(currentUserData.employee_id)}`;
+
+            const response = await fetch(url, { method: 'DELETE' });
+            const result = await response.json();
+
+            if (result.success) {
+                showNotification('✅ Événement marqué comme supprimé!', 'success');
+                await showUserDetails(currentUserData.employee_id, currentUserData.name);
+                await loadPresences();
+            } else {
+                showNotification('❌ Erreur: ' + result.error, 'error');
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            showNotification('❌ Erreur de connexion: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+// ========================================
+// 📤 EXPORT
+// ========================================
+function exportToCSV() {
+if (!currentConfig) {
+showNotification('⚠️ Configuration manquante', 'warning');
+return;
+}
+const filterType = document.getElementById('filterType').value;
+const filteredOnly = filterType === 'filtered' ? 'true' : 'false';
+const url = `/api/presences/export?device_ip=${encodeURIComponent(currentConfig.ip)}&username=${encodeURIComponent(currentConfig.username)}&password=${encodeURIComponent(currentConfig.password)}&filtered_only=${filteredOnly}`;
+
+window.open(url, '_blank');
+}
+// ========================================
+// 🔍 FILTRES
+// ========================================
+function applyFilters() {
+const searchTerm = document.getElementById('searchUser').value.toLowerCase();
+const startDate = document.getElementById('startDate').value;
+const endDate = document.getElementById('endDate').value;
+const statusFilter = document.getElementById('statusFilter').value;
+currentEvents = allEvents.filter(event => {
+    // ✅ FILTRER : Exclure les événements sans identification
+    const isIdentified = event.employee_id && event.employee_id !== '-' && 
+                        event.name && event.name !== '-';
+    
+    if (!isIdentified) return false; // ⚠️ IMPORTANT : Exclure dès le départ
+
+    // Filtre de recherche
+    if (searchTerm && 
+        !event.name.toLowerCase().includes(searchTerm) && 
+        !event.employee_id.toLowerCase().includes(searchTerm)) {
+        return false;
+    }
+
+    // Filtres de date
+    if (startDate && event.date < startDate) return false;
+    if (endDate && event.date > endDate) return false;
+
+    // Filtre de statut (basé sur l'identification)
+    if (statusFilter === 'validated' && !isIdentified) return false;
+    if (statusFilter === 'refused' && isIdentified) return false;
+
+    return true;
+});
+
+displayPresences(currentEvents);
+const userStats = calculateUserStats(currentEvents);
+const classifiedStats = applyPersonClassification(userStats);
+displayUserStats(classifiedStats);
+
+// Recalculer les statistiques
+let validated = 0;
+let refused = 0;
+currentEvents.forEach(event => {
+    const isIdentified = event.employee_id && event.employee_id !== '-' && 
+                        event.name && event.name !== '-';
+    if (isIdentified) validated++;
+    else refused++;
+});
+
+const uniqueUsers = new Set(
+    currentEvents
+        .filter(e => e.employee_id !== '-')
+        .map(e => e.employee_id)
+).size;
+
+document.getElementById('totalEvents').textContent = currentEvents.length;
+document.getElementById('validatedEvents').textContent = validated;
+document.getElementById('refusedEvents').textContent = refused;
+document.getElementById('uniqueUsers').textContent = uniqueUsers;
+}
+// ========================================
+// 🎬 INITIALISATION
+// ========================================
+document.addEventListener('DOMContentLoaded', async function() {
+console.log('🎯 Application de gestion des présences chargée');
+await updateConnectionDisplay();
+
+window.addEventListener('connectionUpdated', async function(e) {
+    console.log('🔄 Événement connectionUpdated reçu:', e.detail);
+    setTimeout(async () => {
+        await updateConnectionDisplay();
+        showNotification('🔄 Connexion mise à jour automatiquement', 'info');
+    }, 500);
+});
+
+window.addEventListener('storage', async function(e) {
+    if (e.key === 'hikConnectionConfig') {
+        console.log('💾 localStorage modifié');
+        await updateConnectionDisplay();
+    }
+});
+
+// ✅ POLLING TOUTES LES 2 SECONDES
+setInterval(async () => {
+    const oldIp = currentConfig ? currentConfig.ip : null;
+    await updateConnectionDisplay();
+    const newIp = currentConfig ? currentConfig.ip : null;
+    
+    if (oldIp && newIp && oldIp !== newIp) {
+        console.log(`🔄 IP changée: ${oldIp} → ${newIp}`);
+        showNotification(`🔄 IP changée: ${newIp}`, 'info');
+    }
+}, 2000);
+
+// Attacher les événements de filtrage
+document.getElementById('searchUser').addEventListener('input', applyFilters);
+document.getElementById('startDate').addEventListener('change', applyFilters);
+document.getElementById('endDate').addEventListener('change', applyFilters);
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+});
+// ========================================
+// 🔒 GESTION FERMETURE MODAL
+// ========================================
+document.addEventListener('click', function(event) {
+const modalElement = document.getElementById('userDetailsModal');
+// Fermer si clic sur backdrop
+if (event.target.classList.contains('modal-backdrop') || 
+    (event.target === modalElement && event.target.classList.contains('show'))) {
+    if (userDetailsModal) {
+        userDetailsModal.hide();
+    }
+}
+// Fermer si clic sur backdrop
+if (event.target.classList.contains('modal-backdrop') || 
+    (event.target === modalElement && event.target.classList.contains('show'))) {
+    if (userDetailsModal) {
+        userDetailsModal.hide();
+    }
+}
+});
+// Touche Échap pour fermer
+document.addEventListener('keydown', function(event) {
+if (event.key === 'Escape') {
+const modalElement = document.getElementById('userDetailsModal');
+if (modalElement.classList.contains('show') && userDetailsModal) {
+userDetailsModal.hide();
+}
+}
+});
+// Fermer le modal si on clique sur le bouton de bascule de la sidebar
+document.addEventListener('click', function(event) {
+try {
+const toggleBtn = event.target.closest && event.target.closest('.sidebar-toggle-btn');
+if (toggleBtn) {
+const modalElement = document.getElementById('userDetailsModal');
+if (modalElement && modalElement.classList.contains('show') && userDetailsModal) {
+userDetailsModal.hide();
+}
+}
+} catch (e) {
+console.debug('sidebar toggle handler error', e);
+}
+});
+</script>
+{% endblock %}

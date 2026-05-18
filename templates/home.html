@@ -1,0 +1,153 @@
+
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Accueil - Système de Sécurité Intelligent</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #e9f0f4, #e9f0f4, #e9f0f4);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-home {
+      background-color: #1e2a38;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0, 188, 212, 0.2);
+      border: 1px solid #00bcd4;
+      text-align: center;
+      width: 100%;
+      max-width: 500px;
+      position: relative;
+    }
+
+    h1 {
+      font-size: 28px;
+      color: #00bcd4;
+    }
+
+    p {
+      font-size: 15px;
+      margin-bottom: 30px;
+      color: #d1dbe5;
+    }
+
+    .btn-home {
+      margin: 10px 0;
+      padding: 10px 20px;
+      width: 100%;
+      font-weight: bold;
+      font-size: 0.95rem;
+    }
+
+    .menu-icon {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      cursor: pointer;
+      font-size: 24px;
+      color: #00bcd4;
+    }
+
+    .ip-panel {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background-color: #1e2a38;
+      border: 1px solid #00bcd4;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 1000;
+      box-shadow: 0 0 10px rgba(0, 188, 212, 0.5);
+      display: none;
+      width: 280px;
+    }
+
+    .ip-panel input {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+      outline: none;
+    }
+
+    .ip-panel button {
+      width: 100%;
+      margin-bottom: 5px;
+    }
+
+    select {
+      margin-top: 15px;
+      padding: 8px;
+      border-radius: 8px;
+      width: 100%;
+      color: black;
+    }
+    
+  </style>
+</head>
+<body>
+ <div class="menu-icon" onclick="togglePanel()">☰</div>
+	  <div class="ip-panel" id="ipPanel">
+	    <form method="POST" action="/set_ip">
+	      <label for="ipInput">Adresse IP de la webcam :</label>
+	      <input type="text" id="ipInput" name="ip" placeholder="http://192.168.X.X:8080/shot.jpg" />
+	      {% if ports %}
+		  <label class="mt-3">Sélectionnez une IP :</label>
+		  <select id="ipSelector" class="form-select">
+		    {% for port, ips in ports.items() %}
+		      {% for ip in ips %}
+			<option value="{{ ip }}">{{ port }} - {{ ip }}</option>
+		      {% endfor %}
+		    {% endfor %}
+		  </select>
+		   <div class="mt-3"></div>
+		{% endif %}
+	      <div class="d-flex justify-content-between gap-2">
+		<button type="submit" class="btn btn-info btn-sm flex-fill">Enregistrer</button>
+		<button type="button" class="btn btn-danger btn-sm flex-fill" onclick="togglePanel()">Fermer</button>
+	      </div>
+	   
+	    </form>
+</div>
+  <div class="card-home">
+    <h1>Système de Sécurité Intelligent</h1>
+    <p>Bienvenue ! Choisissez une action à effectuer :</p>
+    <a href="/register" class="btn btn-outline-light btn-home">➕ Ajouter un utilisateur</a>
+    <a href="/liste_user" class="btn btn-outline-info btn-home">👥 Gérer les utilisateurs</a>
+    <a href="/historique" class="btn btn-outline-warning btn-home">📝 Rédiger dans l'historique</a>
+    <a href="/presences" class="btn btn-outline-primary btn-home">📊 Consulter les présences</a>
+    <a href="/controle" class="btn btn-outline-success btn-home">🎥 Accéder au contrôle caméra</a>   
+  </div>
+  <script>
+    function togglePanel() {
+      const panel = document.getElementById("ipPanel");
+      panel.style.display = (panel.style.display === "none" || panel.style.display === "") ? "block" : "none";
+    }
+        document.getElementById("ipSelector").addEventListener("change", function () {
+    const selectedIP = this.value;
+    fetch("/select_ip", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: "selected_ip=" + encodeURIComponent(selectedIP)
+    })
+    .then(response => response.text())
+    .then(data => {
+      console.log("IP sélectionnée :", selectedIP);
+      alert("Connexion maintenant à l’IP : " + selectedIP);
+    });
+  });
+  
+  </script>
+</body>
+</html>

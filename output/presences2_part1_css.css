@@ -1,0 +1,56 @@
+:root {
+    --primary-color: #2c3e50;
+    --success-color: #27ae60;
+    --danger-color: #e74c3c;
+    --warning-color: #f39c12;
+}
+
+body {
+    background: linear-gradient(180deg, #D8E9EB, #F3F7F8, #E7F0F2);
+    min-height: 100vh;
+    padding: 0px 0;
+}
+
+.main-container {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    padding: 30px;
+    margin: 20px auto;
+    max-width: 1400px;
+}
+
+.stats-card {
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    color: white;
+    transition: transform 0.3s;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+}
+
+.stats-card.total {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.stats-card.validated {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+}
+
+.stats-card.refused {
+    background: linear-gradient(135deg, #eb3349, #f45c43);
+}
+
+.stats-card.unique {
+    background: linear-gradient(135deg, #fa709a, #fee140);
+}
+
+.filter-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}

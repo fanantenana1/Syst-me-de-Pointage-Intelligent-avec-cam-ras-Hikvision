@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Classification Personne</title>
+</head>
+<body>
+    <h1>Test de la nouvelle classification</h1>
+    <div id="results"></div>
+
+    <script>
+        // Copie de la fonction applyPersonClassification
+        function applyPersonClassification(userStats) {
+            return userStats.map(stat => {
+                const isIdentified = stat.employee_id && stat.employee_id !== '-' && 
+                                    stat.name && stat.name !== '-';
+                
+                if (isIdentified) {
+                    // Personne identifiée: tous les événements = validés
+                    return {
+                        ...stat,
+                        validated: stat.total,
+                        refused: 0
+                    };
+                } else {
+                    // Personne non identifiée: tous les événements = refusés
+                    return {
+                        ...stat,
+                        validated: 0,
+                        refused: stat.total
+                    };
+                }
+            });
+        }
+
+        // Test data
+        const testData = [
+            { employee_id: '0055', name: 'XV', total: 95, validated: 0, refused: 95, events: [] },
+            { employee_id: '3822', name: 'Octave', total: 47, validated: 0, refused: 47, events: [] },
+            { employee_id: '-', name: '-', total: 557, validated: 0, refused: 557, events: [] },
+            { employee_id: '00256', name: 'ANDRANA', total: 40, validated: 0, refused: 40, events: [] },
+            { employee_id: '', name: '', total: 10, validated: 0, refused: 10, events: [] }
+        ];
+
+        // Apply classification
+        const classified = applyPersonClassification(testData);
+
+        // Display results
+        let html = '<table border="1" cellpadding="10"><tr><th>ID Employé</th><th>Nom</th><th>Total</th><th>Validés (après)</th><th>Refusés (après)</th><th>Résultat</th></tr>';
+        
+        classified.forEach(stat => {
+            const expected = (stat.employee_id && stat.employee_id !== '-' && stat.name && stat.name !== '-') 
+                ? `✅ Validé (${stat.total}/${stat.validated})`
+                : `❌ Refusé (${stat.total}/${stat.refused})`;
+            
+            html += `<tr>
+                <td>${stat.employee_id || '-'}</td>
+                <td>${stat.name || '-'}</td>
+                <td>${stat.total}</td>
+                <td>${stat.validated}</td>
+                <td>${stat.refused}</td>
+                <td>${expected}</td>
+            </tr>`;
+        });
+        
+        html += '</table>';
+        document.getElementById('results').innerHTML = html;
+
+        console.log('Test data:', testData);
+        console.log('Classified data:', classified);
+    </script>
+</body>
+</html>

@@ -1,0 +1,2724 @@
+###################### Tester IP connecté au camera #################################
+        # Scanner le réseau pour trouver les caméras Hikvision
+        nmap -p 554 192.168.101.0/24
+        # Ou utiliser l'outil SADP de Hikvision pour détecter les caméras
+
+######################### Script recuperer tout les evenement via Hikvision #############################"
+
+import requests
+from requests.auth import HTTPDigestAuth
+import json
+from datetime import datetime
+
+# =================== CONFIGURATION ===================
+HIKVISION_IP = "192.168.101.24"
+USERNAME = "admin"
+PASSWORD = "Eni20230"
+
+auth = HTTPDigestAuth(USERNAME, PASSWORD)
+base_url = f"http://{HIKVISION_IP}/ISAPI"
+
+print("="*120)
+print("🎯 RÉCUPÉRATION DE TOUS LES ÉVÉNEMENTS HIKVISION")
+print("="*120)
+
+all_events = []
+position = 0
+max_per_request = 30  # Maximum autorisé par votre système
+
+# Mapping des types d'événements
+EVENT_TYPES = {
+    (1, 0): "Device Powering On",
+    (2, 0): "Device Shutdown",
+    (2, 1024): "Illegal Shutdown",
+    (3, 0): "Door Unlocked",
+    (4, 0): "Door Locked",
+    (5, 1): "Auth via Card",
+    (5, 2): "Auth via Fingerprint",
+    (5, 3): "Auth via Face",
+    (5, 4): "Auth via Password",
+    (5, 22): "Auth Failed - No Permission",
+    (5, 75): "Auth Failed",
+    (5, 76): "Card Expired",
+    (5, 77): "Invalid Time Period",
+    (21, 1): "Door Locked",
+    (21, 2): "Door Unlocked",
+    (23, 0): "Device Tampered",
+    (38, 0): "Remote Login",
+    (39, 0): "Local Login",
+}
+
+def get_event_type_name(major, minor):
+    """Convertit les codes en nom lisible"""
+    return EVENT_TYPES.get((major, minor), f"Event {major}-{minor}")
+
+# =================== RÉCUPÉRATION PAR PAGINATION ===================
+print("\n📡 Récupération des événements par lots de 30...\n")
+
+batch_number = 1
+total_expected = None
+
+while True:
+    json_payload = {
+        "ACSEventCond": {
+            "searchID": "1",
+            "searchResultPosition": position,
+            "maxResults": max_per_request,
+            "major": 0,
+            "minor": 0
+        }
+    }
+    
+    try:
+        response = requests.post(
+            f"{base_url}/AccessControl/ACSEvent?format=json",
+            json=json_payload,
+            auth=auth,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Première itération : afficher le total
+            if total_expected is None:
+                total_expected = data.get("AcsEvent", {}).get("totalMatches", 0)
+                print(f"📊 Total d'événements à récupérer : {total_expected}")
+                print("="*120)
+            
+            # Extraire les événements
+            info_list = data.get("AcsEvent", {}).get("InfoList", [])
+            num_matches = data.get("AcsEvent", {}).get("numOfMatches", 0)
+            response_status = data.get("AcsEvent", {}).get("responseStatusStrg", "")
+            
+            if info_list:
+                all_events.extend(info_list)
+                
+                # Afficher la progression
+                progress = len(all_events)
+                percent = (progress / total_expected * 100) if total_expected else 0
+                print(f"✅ Lot {batch_number}: {num_matches} événements récupérés | Total: {progress}/{total_expected} ({percent:.1f}%)")
+                
+                # Si c'est le dernier lot
+                if response_status != "MORE" or num_matches < max_per_request:
+                    print("\n🎉 Récupération terminée!")
+                    break
+                
+                # Préparer la position suivante
+                position += max_per_request
+                batch_number += 1
+            else:
+                print(f"⏹️  Fin de la récupération au lot {batch_number}")
+                break
+        
+        else:
+            print(f"❌ Erreur HTTP {response.status_code} au lot {batch_number}")
+            print(f"Réponse: {response.text[:300]}")
+            break
+    
+    except Exception as e:
+        print(f"❌ Erreur au lot {batch_number}: {e}")
+        break
+
+# =================== TRAITEMENT DES RÉSULTATS ===================
+print("\n" + "="*120)
+print(f"🎉 TOTAL RÉCUPÉRÉ: {len(all_events)} événements")
+print("="*120)
+
+if all_events:
+    # Sauvegarder en JSON complet
+    with open("all_events_complete.json", "w", encoding="utf-8") as f:
+        json.dump(all_events, f, indent=2, ensure_ascii=False)
+    print("\n✅ Tous les événements sauvegardés dans: all_events_complete.json")
+    
+    # Créer un format lisible
+    readable_events = []
+    for evt in all_events:
+        readable_events.append({
+            "employee_id": evt.get("employeeNoString", evt.get("employeeNo", "-")),
+            "name": evt.get("name", "-"),
+            "card_no": evt.get("cardNo", "-"),
+            "event_type": get_event_type_name(evt.get("major", 0), evt.get("minor", 0)),
+            "major": evt.get("major"),
+            "minor": evt.get("minor"),
+            "time": evt.get("time", "-"),
+            "door_no": evt.get("doorNo", "-"),
+            "device_name": evt.get("deviceName", "-"),
+            "verify_mode": evt.get("currentVerifyMode", "-"),
+        })
+    
+    # Sauvegarder le format lisible
+    with open("all_events_readable.json", "w", encoding="utf-8") as f:
+        json.dump(readable_events, f, indent=2, ensure_ascii=False)
+    print("✅ Format lisible sauvegardé dans: all_events_readable.json")
+    
+    # Afficher un aperçu des 20 derniers événements
+    print("\n" + "="*120)
+    print("📋 APERÇU DES 20 DERNIERS ÉVÉNEMENTS:")
+    print("="*120)
+    print(f"{'Employee ID':<15} {'Nom':<20} {'Type d\'événement':<40} {'Date/Heure':<30}")
+    print("="*120)
+    
+    for evt in readable_events[-20:]:
+        emp_id = str(evt['employee_id'])[:14]
+        name = str(evt['name'])[:19]
+        evt_type = str(evt['event_type'])[:39]
+        time = str(evt['time'])[:29]
+        
+        print(f"{emp_id:<15} {name:<20} {evt_type:<40} {time:<30}")
+    
+    print("="*120)
+    
+    # Statistiques
+    print("\n📊 STATISTIQUES:")
+    print("="*120)
+    
+    # Compter les types d'événements
+    event_counts = {}
+    for evt in readable_events:
+        evt_type = evt['event_type']
+        event_counts[evt_type] = event_counts.get(evt_type, 0) + 1
+    
+    # Afficher le top 10
+    sorted_events = sorted(event_counts.items(), key=lambda x: x[1], reverse=True)
+    print("\n🔝 Top 10 des types d'événements:")
+    for evt_type, count in sorted_events[:10]:
+        print(f"   {evt_type:<40} : {count:>5} fois")
+    
+    # Compter les employés
+    employees = {}
+    for evt in readable_events:
+        emp_id = evt['employee_id']
+        if emp_id != "-":
+            employees[emp_id] = employees.get(emp_id, 0) + 1
+    
+    if employees:
+        print(f"\n👥 Nombre d'employés différents: {len(employees)}")
+        sorted_employees = sorted(employees.items(), key=lambda x: x[1], reverse=True)
+        print("\n🔝 Top 5 des employés les plus actifs:")
+        for emp_id, count in sorted_employees[:5]:
+            # Trouver le nom
+            name = "-"
+            for evt in readable_events:
+                if evt['employee_id'] == emp_id and evt['name'] != "-":
+                    name = evt['name']
+                    break
+            print(f"   {emp_id:<15} {name:<20} : {count:>5} événements")
+    
+    # Export CSV optionnel
+    print("\n" + "="*120)
+    export_csv = input("💾 Voulez-vous aussi exporter en CSV? (o/n): ").strip().lower()
+    
+    if export_csv == 'o':
+        try:
+            import csv
+            with open("all_events.csv", "w", newline='', encoding='utf-8-sig') as f:
+                writer = csv.DictWriter(f, fieldnames=['employee_id', 'name', 'card_no', 'event_type', 'time', 'door_no', 'major', 'minor'])
+                writer.writeheader()
+                writer.writerows(readable_events)
+            print("✅ Export CSV réussi: all_events.csv")
+        except Exception as e:
+            print(f"❌ Erreur export CSV: {e}")
+
+print("\n" + "="*120)
+print("✅ SCRIPT TERMINÉ!")
+print("="*120)
+print("\n📁 Fichiers générés:")
+print("   1. all_events_complete.json  (données brutes complètes)")
+print("   2. all_events_readable.json  (format lisible)")
+print("   3. all_events.csv            (si vous avez choisi l'export CSV)")
+print("\n")
+
+############################## V2 #################################
+
+import requests
+from requests.auth import HTTPDigestAuth
+import json
+import csv
+from datetime import datetime
+
+# =================== CONFIGURATION ===================
+HIKVISION_IP = "192.168.101.24"
+USERNAME = "admin"
+PASSWORD = "Eni20230"
+
+auth = HTTPDigestAuth(USERNAME, PASSWORD)
+base_url = f"http://{HIKVISION_IP}/ISAPI"
+
+print("="*120)
+print("🎯 ANALYSE DES 50 DERNIERS ÉVÉNEMENTS POUR IDENTIFIER LES PRÉSENCES VALIDÉES")
+print("="*120)
+
+# Récupérer les 50 derniers événements
+json_payload = {
+    "ACSEventCond": {
+        "searchID": "1",
+        "searchResultPosition": 0,
+        "maxResults": 50,
+        "major": 0,
+        "minor": 0
+    }
+}
+
+try:
+    response = requests.post(
+        f"{base_url}/AccessControl/ACSEvent?format=json",
+        json=json_payload,
+        auth=auth,
+        headers={"Content-Type": "application/json"},
+        timeout=30
+    )
+    
+    if response.status_code == 200:
+        data = response.json()
+        events = data.get("AcsEvent", {}).get("InfoList", [])
+        
+        print(f"\n📊 {len(events)} derniers événements récupérés\n")
+        print("="*120)
+        print(f"{'#':<4} {'ID':<10} {'Nom':<15} {'Major':<7} {'Minor':<7} {'VerifyMode':<15} {'Date/Heure':<25}")
+        print("="*120)
+        
+        for i, evt in enumerate(events, 1):
+            emp_id = str(evt.get("employeeNoString", evt.get("employeeNo", "-")))[:9]
+            name = str(evt.get("name", "-"))[:14]
+            major = evt.get("major", 0)
+            minor = evt.get("minor", 0)
+            verify = str(evt.get("currentVerifyMode", "-"))[:14]
+            time = str(evt.get("time", "-"))[:24]
+            
+            # Mettre en évidence les événements avec face/fp
+            marker = "🔹" if "face" in verify.lower() or "fp" in verify.lower() else "  "
+            
+            print(f"{marker}{i:<3} {emp_id:<10} {name:<15} ({major:<2},{minor:<4}) {verify:<15} {time:<25}")
+        
+        print("="*120)
+        
+        # Filtrer les événements avec face/fp dans verify mode
+        relevant_events = [
+            evt for evt in events 
+            if "face" in str(evt.get("currentVerifyMode", "")).lower() 
+            or "fp" in str(evt.get("currentVerifyMode", "")).lower()
+        ]
+        
+        print(f"\n🔍 {len(relevant_events)} événements avec Face/Empreinte détectés:")
+        print("="*120)
+        
+        if relevant_events:
+            print(f"{'ID':<10} {'Nom':<15} {'Code (M,m)':<12} {'VerifyMode':<15} {'Date/Heure':<25}")
+            print("="*120)
+            
+            codes_found = set()
+            for evt in relevant_events:
+                emp_id = str(evt.get("employeeNoString", evt.get("employeeNo", "-")))[:9]
+                name = str(evt.get("name", "-"))[:14]
+                major = evt.get("major", 0)
+                minor = evt.get("minor", 0)
+                verify = str(evt.get("currentVerifyMode", "-"))[:14]
+                time = str(evt.get("time", "-"))[:24]
+                
+                codes_found.add((major, minor))
+                print(f"{emp_id:<10} {name:<15} ({major},{minor})      {verify:<15} {time:<25}")
+            
+            print("="*120)
+            print(f"\n✅ CODES IDENTIFIÉS POUR LES PRÉSENCES VALIDÉES:")
+            for code in sorted(codes_found):
+                print(f"   Code: {code}")
+        
+        # Sauvegarder pour analyse
+        with open("last_50_events.json", "w", encoding="utf-8") as f:
+            json.dump(events, f, indent=2, ensure_ascii=False)
+        print(f"\n💾 Détails complets sauvegardés dans: last_50_events.json")
+        
+    else:
+        print(f"❌ Erreur HTTP {response.status_code}")
+        print(f"Réponse: {response.text[:500]}")
+
+except Exception as e:
+    print(f"❌ Erreur: {e}")
+
+print("\n" + "="*120)
+print("📝 INSTRUCTIONS:")
+print("="*120)
+print("1. Vérifiez les lignes marquées 🔹 ci-dessus")
+print("2. Ces événements devraient inclure vos tests avec ANDRANA")
+print("3. Notez les codes (major, minor) des présences VALIDÉES")
+print("4. Je créerai le script final avec ces codes!")
+print("="*120)
+
+###################################### V3 ############################################"
+
+import requests
+from requests.auth import HTTPDigestAuth
+import json
+import csv
+from datetime import datetime
+from collections import Counter
+
+# =================== CONFIGURATION ===================
+HIKVISION_IP = "192.168.101.24"
+USERNAME = "admin"
+PASSWORD = "Eni20230"
+
+auth = HTTPDigestAuth(USERNAME, PASSWORD)
+base_url = f"http://{HIKVISION_IP}/ISAPI"
+
+print("="*100)
+print("🎯 ANALYSE DES ÉVÉNEMENTS HIKVISION - MODE DEBUG")
+print("="*100)
+
+# =================== RÉCUPÉRATION ===================
+all_events = []
+position = 0
+max_per_request = 30
+
+print("\n📡 Récupération de TOUS les événements pour analyse...\n")
+
+batch_number = 1
+total_expected = None
+
+while True:
+    json_payload = {
+        "ACSEventCond": {
+            "searchID": "1",
+            "searchResultPosition": position,
+            "maxResults": max_per_request,
+            "major": 0,  # TOUS les événements
+            "minor": 0
+        }
+    }
+    
+    try:
+        response = requests.post(
+            f"{base_url}/AccessControl/ACSEvent?format=json",
+            json=json_payload,
+            auth=auth,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if total_expected is None:
+                total_expected = data.get("AcsEvent", {}).get("totalMatches", 0)
+                print(f"📊 Total d'événements : {total_expected}")
+                print("="*100)
+            
+            info_list = data.get("AcsEvent", {}).get("InfoList", [])
+            num_matches = data.get("AcsEvent", {}).get("numOfMatches", 0)
+            response_status = data.get("AcsEvent", {}).get("responseStatusStrg", "")
+            
+            if info_list:
+                all_events.extend(info_list)
+                
+                progress = position + num_matches
+                percent = (progress / total_expected * 100) if total_expected else 0
+                print(f"✅ Lot {batch_number}: {num_matches} événements | Total: {len(all_events)} | {progress}/{total_expected} ({percent:.1f}%)")
+                
+                if response_status != "MORE" or num_matches < max_per_request:
+                    print("\n🎉 Récupération terminée!")
+                    break
+                
+                position += max_per_request
+                batch_number += 1
+            else:
+                break
+        
+        else:
+            print(f"❌ Erreur HTTP {response.status_code}")
+            break
+    
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        break
+
+# =================== ANALYSE DES CODES ===================
+print("\n" + "="*100)
+print("🔍 ANALYSE DES CODES (MAJOR, MINOR)")
+print("="*100)
+
+# Compter tous les codes
+code_counter = Counter()
+code_details = {}
+
+for evt in all_events:
+    major = evt.get("major", 0)
+    minor = evt.get("minor", 0)
+    code = (major, minor)
+    code_counter[code] += 1
+    
+    # Garder un exemple de chaque code
+    if code not in code_details:
+        code_details[code] = {
+            "employee_id": evt.get("employeeNoString", evt.get("employeeNo", "-")),
+            "name": evt.get("name", "-"),
+            "time": evt.get("time", "-"),
+            "verify_mode": evt.get("currentVerifyMode", "-"),
+            "card_no": evt.get("cardNo", "-")
+        }
+
+# Afficher TOUS les codes trouvés
+print("\n📋 TOUS LES CODES TROUVÉS (triés par fréquence):\n")
+print(f"{'Code (major,minor)':<20} {'Occurrences':<12} {'Exemple employé':<15} {'Nom':<20} {'Verify Mode'}")
+print("="*100)
+
+for code, count in code_counter.most_common():
+    details = code_details[code]
+    major, minor = code
+    emp_id = str(details['employee_id'])[:14]
+    name = str(details['name'])[:19]
+    verify = str(details['verify_mode'])[:10]
+    
+    print(f"({major:>2}, {minor:<4})         {count:<12} {emp_id:<15} {name:<20} {verify}")
+
+# =================== DEMANDER LES CODES VALIDES ===================
+print("\n" + "="*100)
+print("🎯 IDENTIFICATION DES PRÉSENCES VALIDÉES")
+print("="*100)
+print("\nD'après les tests que vous avez faits:")
+print("- 4 authentifications faciales validées")
+print("- 3 authentifications par empreinte validées")
+print("\n👉 Regardez la liste ci-dessus et identifiez les codes qui correspondent")
+print("   aux authentifications RÉUSSIES (présences validées)")
+print("\nExemple de codes possibles:")
+print("  - (5, 1) ou (21, 1) pour carte")
+print("  - (5, 2) ou (21, 2) pour empreinte") 
+print("  - (5, 3) ou (21, 3) pour facial")
+print("  - Ou d'autres codes avec currentVerifyMode = 'face' ou 'fingerPrint'")
+
+print("\n" + "="*100)
+print("💾 Données complètes sauvegardées dans: debug_all_events.json")
+print("="*100)
+
+# Sauvegarder pour analyse
+with open("debug_all_events.json", "w", encoding="utf-8") as f:
+    json.dump(all_events, f, indent=2, ensure_ascii=False)
+
+# Créer un résumé par verify_mode
+print("\n📊 ÉVÉNEMENTS PAR VERIFY MODE:")
+print("="*100)
+verify_modes = Counter()
+for evt in all_events:
+    verify = evt.get("currentVerifyMode", "Non spécifié")
+    verify_modes[verify] += 1
+
+for mode, count in verify_modes.most_common():
+    print(f"   {mode:<30} : {count:>5} fois")
+
+print("\n" + "="*100)
+print("📝 PROCHAINE ÉTAPE:")
+print("="*100)
+print("1. Examinez le fichier debug_all_events.json")
+print("2. Recherchez vos 7 tests récents (4 facial + 3 empreinte)")
+print("3. Notez leurs codes (major, minor) et currentVerifyMode")
+print("4. Je mettrai à jour le script avec les bons codes!")
+print("\n")
+
+######################################## V4 ###################################################"""
+
+import requests
+from requests.auth import HTTPDigestAuth
+import json
+import csv
+from datetime import datetime
+from collections import Counter
+
+# =================== CONFIGURATION ===================
+HIKVISION_IP = "192.168.101.24"
+USERNAME = "admin"
+PASSWORD = "Eni20230"
+
+auth = HTTPDigestAuth(USERNAME, PASSWORD)
+base_url = f"http://{HIKVISION_IP}/ISAPI"
+
+print("="*100)
+print("🎯 RÉCUPÉRATION DES PRÉSENCES HIKVISION - VERSION CORRIGÉE")
+print("="*100)
+
+# =================== ÉVÉNEMENTS DE PRÉSENCE ===================
+# Liste COMPLÈTE basée sur la documentation Hikvision et vos données
+PRESENCE_EVENTS = {
+    # ===== AUTHENTIFICATIONS RÉUSSIES =====
+    (5, 1): ("Carte", True),
+    (5, 2): ("Empreinte", True),
+    (5, 3): ("Facial", True),
+    (5, 4): ("Code PIN", True),
+    (5, 5): ("Combiné", True),
+    
+    # NOUVEAUX CODES TROUVÉS DANS VOS DONNÉES (authentifications réussies)
+    (5, 21): ("Ouverture porte", True),      # Porte ouverte (accès autorisé)
+    (5, 38): ("Sortie validée", True),       # Sortie autorisée
+    (5, 39): ("Entrée validée", True),       # Entrée autorisée
+    (5, 104): ("Multi-vérification", True),  # Authentification multi-facteurs
+    
+    # ===== AUTHENTIFICATIONS ÉCHOUÉES =====
+    (5, 22): ("Carte", False),         # Pas de permission
+    (5, 75): ("Non spécifié", False),  # Auth échouée
+    (5, 76): ("Carte", False),         # Carte expirée
+    (5, 77): ("Carte", False),         # Hors période
+    (5, 78): ("Carte", False),         # Porte verrouillée
+    (5, 79): ("Code PIN", False),      # Code incorrect
+}
+
+def get_presence_info(major, minor):
+    """Retourne (méthode, validé) ou None si pas un événement de présence"""
+    return PRESENCE_EVENTS.get((major, minor))
+
+# =================== RÉCUPÉRATION ===================
+all_presences = []
+all_events_debug = []
+position = 0
+max_per_request = 30
+
+print("\n📡 Récupération des événements...\n")
+
+batch_number = 1
+total_expected = None
+
+while True:
+    json_payload = {
+        "ACSEventCond": {
+            "searchID": "1",
+            "searchResultPosition": position,
+            "maxResults": max_per_request,
+            "major": 5,
+            "minor": 0
+        }
+    }
+    
+    try:
+        response = requests.post(
+            f"{base_url}/AccessControl/ACSEvent?format=json",
+            json=json_payload,
+            auth=auth,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if total_expected is None:
+                total_expected = data.get("AcsEvent", {}).get("totalMatches", 0)
+                print(f"📊 Total d'événements d'authentification : {total_expected}")
+                print("="*100)
+            
+            info_list = data.get("AcsEvent", {}).get("InfoList", [])
+            num_matches = data.get("AcsEvent", {}).get("numOfMatches", 0)
+            response_status = data.get("AcsEvent", {}).get("responseStatusStrg", "")
+            
+            if info_list:
+                for evt in info_list:
+                    major = evt.get("major", 0)
+                    minor = evt.get("minor", 0)
+                    
+                    all_events_debug.append({
+                        "major": major,
+                        "minor": minor,
+                        "employee_id": evt.get("employeeNoString", evt.get("employeeNo", "-")),
+                        "name": evt.get("name", "-"),
+                        "datetime": evt.get("time", "-"),
+                        "card_no": evt.get("cardNo", "-"),
+                        "door_no": evt.get("doorNo", "-")
+                    })
+                    
+                    presence_info = get_presence_info(major, minor)
+                    
+                    if presence_info:
+                        method, validated = presence_info
+                        all_presences.append({
+                            "employee_id": evt.get("employeeNoString", evt.get("employeeNo", "-")),
+                            "name": evt.get("name", "-"),
+                            "method": method,
+                            "validated": "✅ Validé" if validated else "❌ Refusé",
+                            "datetime": evt.get("time", "-"),
+                            "card_no": evt.get("cardNo", "-"),
+                            "door_no": evt.get("doorNo", "-"),
+                            "major": major,
+                            "minor": minor
+                        })
+                
+                progress = position + num_matches
+                percent = (progress / total_expected * 100) if total_expected else 0
+                print(f"✅ Lot {batch_number}: {num_matches} événements | Présences trouvées: {len(all_presences)} | Progression: {progress}/{total_expected} ({percent:.1f}%)")
+                
+                if response_status != "MORE" or num_matches < max_per_request:
+                    print("\n🎉 Récupération terminée!")
+                    break
+                
+                position += max_per_request
+                batch_number += 1
+            else:
+                break
+        
+        else:
+            print(f"❌ Erreur HTTP {response.status_code}")
+            break
+    
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        break
+
+# =================== DIAGNOSTIC ===================
+print("\n" + "="*100)
+print("🔍 DIAGNOSTIC DES CODES D'ÉVÉNEMENTS")
+print("="*100)
+
+code_counter = Counter()
+for evt in all_events_debug:
+    code_counter[(evt['major'], evt['minor'])] += 1
+
+print("\n📋 Codes (major, minor) trouvés:")
+print(f"{'Code':<20} {'Occurrences':<15} {'Type':<20} {'Statut'}")
+print("="*100)
+
+for (major, minor), count in sorted(code_counter.items(), key=lambda x: x[1], reverse=True):
+    presence_info = get_presence_info(major, minor)
+    if presence_info:
+        method, validated = presence_info
+        status = "✅ VALIDÉ" if validated else "❌ REFUSÉ"
+        type_auth = method
+    else:
+        status = "⚠️  NON RECONNU"
+        type_auth = "Inconnu"
+    
+    print(f"({major}, {minor}){' ':<13} {count:<15} {type_auth:<20} {status}")
+
+# =================== RÉSULTATS ===================
+print("\n" + "="*100)
+print(f"🎉 TOTAL DES PRÉSENCES: {len(all_presences)}")
+print("="*100)
+
+if all_presences:
+    # Sauvegarder en JSON
+    with open("presences_completes.json", "w", encoding="utf-8") as f:
+        json.dump(all_presences, f, indent=2, ensure_ascii=False)
+    print("\n✅ Présences sauvegardées: presences_completes.json")
+    
+    # Sauvegarder debug
+    with open("events_debug.json", "w", encoding="utf-8") as f:
+        json.dump(all_events_debug, f, indent=2, ensure_ascii=False)
+    print("✅ Debug sauvegardé: events_debug.json")
+    
+    # CSV
+    try:
+        with open("presences_completes.csv", "w", newline='', encoding='utf-8-sig') as f:
+            fieldnames = ['employee_id', 'name', 'method', 'validated', 'datetime', 'card_no', 'door_no', 'major', 'minor']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_presences)
+        print("✅ Export CSV: presences_completes.csv")
+    except Exception as e:
+        print(f"❌ Erreur CSV: {e}")
+    
+    # Aperçu des dernières présences VALIDÉES
+    validated_presences = [p for p in all_presences if "Validé" in p['validated']]
+    
+    if validated_presences:
+        print("\n" + "="*100)
+        print(f"📋 DERNIÈRES PRÉSENCES VALIDÉES (sur {len(validated_presences)} au total):")
+        print("="*100)
+        print(f"{'ID':<10} {'Nom':<25} {'Méthode':<20} {'Date/Heure':<25} {'Code':<10}")
+        print("="*100)
+        
+        for p in validated_presences[-30:]:
+            emp_id = str(p['employee_id'])[:9]
+            name = str(p['name'])[:24]
+            method = str(p['method'])[:19]
+            dt = str(p['datetime'])[:24]
+            code = f"({p['major']},{p['minor']})"
+            
+            print(f"{emp_id:<10} {name:<25} {method:<20} {dt:<25} {code:<10}")
+    
+    print("\n" + "="*100)
+    print("📊 STATISTIQUES FINALES")
+    print("="*100)
+    
+    # Validées vs Refusées
+    validated_count = sum(1 for p in all_presences if "Validé" in p['validated'])
+    refused_count = len(all_presences) - validated_count
+    
+    print(f"\n✅ Présences VALIDÉES  : {validated_count} ({validated_count/len(all_presences)*100:.1f}%)")
+    print(f"❌ Présences REFUSÉES  : {refused_count} ({refused_count/len(all_presences)*100:.1f}%)")
+    
+    # Par méthode (validées uniquement)
+    if validated_count > 0:
+        method_counts = {}
+        for p in all_presences:
+            if "Validé" in p['validated']:
+                method = p['method']
+                method_counts[method] = method_counts.get(method, 0) + 1
+        
+        print("\n🔐 Méthodes d'authentification (validées):")
+        for method, count in sorted(method_counts.items(), key=lambda x: x[1], reverse=True):
+            print(f"   {method:<20} : {count:>5} fois")
+    
+    # Par employé (validées uniquement)
+    employees = {}
+    employee_names = {}
+    for p in all_presences:
+        if "Validé" in p['validated'] and p['employee_id'] != "-":
+            emp_id = p['employee_id']
+            employees[emp_id] = employees.get(emp_id, 0) + 1
+            if p['name'] != "-":
+                employee_names[emp_id] = p['name']
+    
+    if employees:
+        print(f"\n👥 Nombre d'employés avec présences validées: {len(employees)}")
+        sorted_employees = sorted(employees.items(), key=lambda x: x[1], reverse=True)
+        
+        print("\n🏆 Top 15 des employés les plus présents:")
+        for emp_id, count in sorted_employees[:15]:
+            name = employee_names.get(emp_id, "Inconnu")
+            print(f"   {emp_id:<10} {name:<25} : {count:>5} présences")
+    
+    # Par code
+    print("\n🔢 Répartition par code d'événement:")
+    code_stats = {}
+    for p in all_presences:
+        code = f"({p['major']}, {p['minor']})"
+        validated = "Validé" in p['validated']
+        key = (code, validated)
+        code_stats[key] = code_stats.get(key, 0) + 1
+    
+    for (code, validated), count in sorted(code_stats.items(), key=lambda x: x[1], reverse=True):
+        status = "✅ Validé" if validated else "❌ Refusé"
+        print(f"   {code:<15} {status:<12} : {count:>5} fois")
+
+print("\n" + "="*100)
+print("✅ SCRIPT TERMINÉ!")
+print("="*100)
+print("\n📁 Fichiers générés:")
+print("   1. presences_completes.json  (toutes les présences)")
+print("   2. presences_completes.csv   (format Excel)")
+print("   3. events_debug.json         (données brutes)")
+print("\n💡 Vous devriez maintenant voir des présences VALIDÉES !")
+print("\n")
+
+#################################################" V5 ##############################################
+
+import requests
+from requests.auth import HTTPDigestAuth
+import json
+import csv
+from datetime import datetime, timedelta
+from collections import defaultdict
+
+# =================== CONFIGURATION ===================
+HIKVISION_IP = "192.168.101.24"
+USERNAME = "admin"
+PASSWORD = "Eni20230"
+
+auth = HTTPDigestAuth(USERNAME, PASSWORD)
+base_url = f"http://{HIKVISION_IP}/ISAPI"
+
+print("="*100)
+print("🎯 RÉCUPÉRATION DES PRÉSENCES AVEC MÉTHODES D'AUTHENTIFICATION")
+print("="*100)
+
+# =================== CODES D'ÉVÉNEMENTS ===================
+AUTH_METHOD_CODES = {
+    (5, 1): "Carte",
+    (5, 2): "Empreinte",
+    (5, 3): "Visage",
+    (5, 4): "Code PIN",
+}
+
+SUCCESS_CODES = {
+    (5, 21): "Accès autorisé",
+    (5, 38): "Sortie validée",
+    (5, 39): "Entrée validée",
+    (5, 104): "Multi-vérification",
+}
+
+FAILURE_CODES = {
+    (5, 22): "Pas de permission",
+    (5, 75): "Auth échouée",
+    (5, 76): "Carte expirée",
+    (5, 77): "Hors période",
+    (5, 78): "Porte verrouillée",
+    (5, 79): "Code incorrect",
+}
+
+# =================== RÉCUPÉRATION DES ÉVÉNEMENTS BRUTS ===================
+all_events = []
+position = 0
+max_per_request = 50
+
+print("\n📡 Récupération des événements bruts...\n")
+
+batch_number = 1
+total_expected = None
+
+while True:
+    json_payload = {
+        "ACSEventCond": {
+            "searchID": "1",
+            "searchResultPosition": position,
+            "maxResults": max_per_request,
+            "major": 5,
+            "minor": 0
+        }
+    }
+    
+    try:
+        response = requests.post(
+            f"{base_url}/AccessControl/ACSEvent?format=json",
+            json=json_payload,
+            auth=auth,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if total_expected is None:
+                total_expected = data.get("AcsEvent", {}).get("totalMatches", 0)
+                print(f"📊 Total d'événements : {total_expected}")
+                print("="*100)
+            
+            info_list = data.get("AcsEvent", {}).get("InfoList", [])
+            num_matches = data.get("AcsEvent", {}).get("numOfMatches", 0)
+            response_status = data.get("AcsEvent", {}).get("responseStatusStrg", "")
+            
+            if info_list:
+                for evt in info_list:
+                    major = evt.get("major", 0)
+                    minor = evt.get("minor", 0)
+                    time_str = evt.get("time", "")
+                    
+                    # Parser la date
+                    try:
+                        evt_time = datetime.fromisoformat(time_str.replace('+03:00', ''))
+                    except:
+                        evt_time = None
+                    
+                    all_events.append({
+                        "major": major,
+                        "minor": minor,
+                        "employee_id": evt.get("employeeNoString", evt.get("employeeNo", "-")),
+                        "name": evt.get("name", "-"),
+                        "datetime": time_str,
+                        "datetime_obj": evt_time,
+                        "card_no": evt.get("cardNo", "-"),
+                        "door_no": evt.get("doorNo", "-")
+                    })
+                
+                progress = position + num_matches
+                percent = (progress / total_expected * 100) if total_expected else 0
+                print(f"✅ Lot {batch_number}: {num_matches} événements | Total: {len(all_events)} | {progress}/{total_expected} ({percent:.1f}%)")
+                
+                if response_status != "MORE" or num_matches < max_per_request:
+                    print("\n🎉 Récupération terminée!")
+                    break
+                
+                position += max_per_request
+                batch_number += 1
+            else:
+                break
+        else:
+            print(f"❌ Erreur HTTP {response.status_code}")
+            break
+    
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        break
+
+# =================== ANALYSE DES MÉTHODES D'AUTHENTIFICATION ===================
+print("\n" + "="*100)
+print("🔍 ANALYSE DES MÉTHODES D'AUTHENTIFICATION")
+print("="*100)
+
+# Trier les événements par date
+all_events.sort(key=lambda x: x['datetime'])
+
+# Analyser les présences avec méthodes
+presences_with_methods = []
+TIME_WINDOW = timedelta(seconds=10)  # Fenêtre de 10 secondes pour associer méthode et succès
+
+for i, evt in enumerate(all_events):
+    major, minor = evt['major'], evt['minor']
+    
+    # Si c'est un événement de succès
+    if (major, minor) in SUCCESS_CODES:
+        employee_id = evt['employee_id']
+        name = evt['name']
+        evt_time = evt['datetime_obj']
+        
+        # Chercher la méthode d'authentification dans les événements précédents (10 secondes avant)
+        auth_methods = {
+            "Visage": False,
+            "Empreinte": False,
+            "Carte": False,
+            "Code PIN": False
+        }
+        
+        if evt_time:
+            # Regarder les événements dans une fenêtre de 10 secondes avant
+            for j in range(i-1, max(0, i-20), -1):  # Regarder les 20 derniers événements
+                prev_evt = all_events[j]
+                prev_time = prev_evt['datetime_obj']
+                
+                if not prev_time:
+                    continue
+                
+                time_diff = evt_time - prev_time
+                
+                # Si trop ancien, arrêter
+                if time_diff > TIME_WINDOW:
+                    break
+                
+                # Vérifier si même employé ou carte
+                same_user = (prev_evt['employee_id'] == employee_id and employee_id != "-") or \
+                           (prev_evt['card_no'] == evt['card_no'] and evt['card_no'] != "-")
+                
+                if same_user or employee_id == "-":
+                    prev_code = (prev_evt['major'], prev_evt['minor'])
+                    if prev_code in AUTH_METHOD_CODES:
+                        method = AUTH_METHOD_CODES[prev_code]
+                        auth_methods[method] = True
+        
+        # Si aucune méthode détectée, essayer de deviner depuis le contexte
+        if not any(auth_methods.values()):
+            # Si l'employé est identifié, c'est probablement Visage ou Empreinte
+            if name != "-" and employee_id != "-":
+                auth_methods["Visage"] = True  # Par défaut pour les identifications
+        
+        # Créer l'entrée de présence
+        presence = {
+            "employee_id": employee_id if employee_id != "-" else "Inconnu",
+            "name": name if name != "-" else "Utilisateur non identifié",
+            "datetime": evt['datetime'],
+            "type_acces": SUCCESS_CODES[(major, minor)],
+            "visage": "✅" if auth_methods["Visage"] else "❌",
+            "empreinte": "✅" if auth_methods["Empreinte"] else "❌",
+            "carte": "✅" if auth_methods["Carte"] else "❌",
+            "code_pin": "✅" if auth_methods["Code PIN"] else "❌",
+            "door_no": evt['door_no'],
+            "card_no": evt['card_no']
+        }
+        
+        presences_with_methods.append(presence)
+
+print(f"\n✅ {len(presences_with_methods)} présences validées analysées")
+
+# =================== REGROUPEMENT PAR EMPLOYÉ ===================
+print("\n" + "="*100)
+print("👥 RÉCAPITULATIF PAR EMPLOYÉ")
+print("="*100)
+
+employee_summary = defaultdict(lambda: {
+    "name": "Inconnu",
+    "total_presences": 0,
+    "visage_count": 0,
+    "empreinte_count": 0,
+    "carte_count": 0,
+    "code_pin_count": 0,
+    "first_presence": None,
+    "last_presence": None
+})
+
+for p in presences_with_methods:
+    emp_id = p['employee_id']
+    emp_summary = employee_summary[emp_id]
+    
+    emp_summary['name'] = p['name']
+    emp_summary['total_presences'] += 1
+    
+    if p['visage'] == "✅":
+        emp_summary['visage_count'] += 1
+    if p['empreinte'] == "✅":
+        emp_summary['empreinte_count'] += 1
+    if p['carte'] == "✅":
+        emp_summary['carte_count'] += 1
+    if p['code_pin'] == "✅":
+        emp_summary['code_pin_count'] += 1
+    
+    if emp_summary['first_presence'] is None:
+        emp_summary['first_presence'] = p['datetime']
+    emp_summary['last_presence'] = p['datetime']
+
+# =================== SAUVEGARDE ===================
+print("\n📁 Sauvegarde des fichiers...")
+
+# JSON détaillé
+with open("presences_detaillees.json", "w", encoding="utf-8") as f:
+    json.dump(presences_with_methods, f, indent=2, ensure_ascii=False)
+print("✅ presences_detaillees.json")
+
+# CSV détaillé
+with open("presences_detaillees.csv", "w", newline='', encoding='utf-8-sig') as f:
+    fieldnames = ['employee_id', 'name', 'datetime', 'type_acces', 'visage', 'empreinte', 'carte', 'code_pin', 'door_no', 'card_no']
+    writer = csv.DictWriter(f, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(presences_with_methods)
+print("✅ presences_detaillees.csv")
+
+# Résumé par employé
+employee_summary_list = []
+for emp_id, data in employee_summary.items():
+    employee_summary_list.append({
+        "employee_id": emp_id,
+        "name": data['name'],
+        "total_presences": data['total_presences'],
+        "visage": data['visage_count'],
+        "empreinte": data['empreinte_count'],
+        "carte": data['carte_count'],
+        "code_pin": data['code_pin_count'],
+        "premiere_presence": data['first_presence'],
+        "derniere_presence": data['last_presence']
+    })
+
+with open("resume_par_employe.json", "w", encoding="utf-8") as f:
+    json.dump(employee_summary_list, f, indent=2, ensure_ascii=False)
+print("✅ resume_par_employe.json")
+
+with open("resume_par_employe.csv", "w", newline='', encoding='utf-8-sig') as f:
+    fieldnames = ['employee_id', 'name', 'total_presences', 'visage', 'empreinte', 'carte', 'code_pin', 'premiere_presence', 'derniere_presence']
+    writer = csv.DictWriter(f, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(employee_summary_list)
+print("✅ resume_par_employe.csv")
+
+# =================== AFFICHAGE DES RÉSULTATS ===================
+print("\n" + "="*100)
+print("📋 DERNIÈRES PRÉSENCES DÉTAILLÉES (30 dernières)")
+print("="*100)
+print(f"{'ID':<10} {'Nom':<20} {'Date/Heure':<20} {'Visage':<8} {'Empreinte':<10} {'Carte':<8} {'Type':<18}")
+print("="*100)
+
+for p in presences_with_methods[-30:]:
+    emp_id = p['employee_id'][:9]
+    name = p['name'][:19]
+    dt = p['datetime'][:19]
+    visage = p['visage']
+    empreinte = p['empreinte']
+    carte = p['carte']
+    type_acces = p['type_acces'][:17]
+    
+    print(f"{emp_id:<10} {name:<20} {dt:<20} {visage:<8} {empreinte:<10} {carte:<8} {type_acces:<18}")
+
+print("\n" + "="*100)
+print("📊 RÉSUMÉ PAR EMPLOYÉ")
+print("="*100)
+print(f"{'ID':<10} {'Nom':<20} {'Total':<8} {'Visage':<8} {'Empreinte':<10} {'Carte':<8}")
+print("="*100)
+
+sorted_employees = sorted(employee_summary_list, key=lambda x: x['total_presences'], reverse=True)
+for emp in sorted_employees[:20]:
+    emp_id = emp['employee_id'][:9]
+    name = emp['name'][:19]
+    total = emp['total_presences']
+    visage = emp['visage']
+    empreinte = emp['empreinte']
+    carte = emp['carte']
+    
+    print(f"{emp_id:<10} {name:<20} {total:<8} {visage:<8} {empreinte:<10} {carte:<8}")
+
+print("\n" + "="*100)
+print("📊 STATISTIQUES GLOBALES")
+print("="*100)
+
+total_presences = len(presences_with_methods)
+total_visage = sum(1 for p in presences_with_methods if p['visage'] == "✅")
+total_empreinte = sum(1 for p in presences_with_methods if p['empreinte'] == "✅")
+total_carte = sum(1 for p in presences_with_methods if p['carte'] == "✅")
+total_code = sum(1 for p in presences_with_methods if p['code_pin'] == "✅")
+total_employes = len(employee_summary)
+
+print(f"\n👥 Nombre d'employés uniques : {total_employes}")
+print(f"✅ Total présences validées   : {total_presences}")
+print(f"\n🔐 Authentifications par méthode:")
+print(f"   😊 Visage      : {total_visage} ({total_visage/total_presences*100:.1f}%)")
+print(f"   👆 Empreinte   : {total_empreinte} ({total_empreinte/total_presences*100:.1f}%)")
+print(f"   💳 Carte       : {total_carte} ({total_carte/total_presences*100:.1f}%)")
+print(f"   🔢 Code PIN    : {total_code} ({total_code/total_presences*100:.1f}%)")
+
+print("\n" + "="*100)
+print("✅ SCRIPT TERMINÉ!")
+print("="*100)
+print("\n📁 Fichiers générés:")
+print("   1. presences_detaillees.json   - Toutes les présences avec méthodes")
+print("   2. presences_detaillees.csv    - Format Excel avec colonnes Visage/Empreinte/Carte")
+print("   3. resume_par_employe.json     - Statistiques par employé")
+print("   4. resume_par_employe.csv      - Résumé Excel par employé")
+print("\n💡 Les colonnes Visage/Empreinte/Carte indiquent la méthode utilisée pour chaque présence")
+print("\n")
+
+################################### V6 ##################################################"
+
+import requests
+from requests.auth import HTTPDigestAuth
+import json
+import csv
+from datetime import datetime, date
+from collections import Counter
+
+# =================== CONFIGURATION ===================
+HIKVISION_IP = "192.168.101.24"
+USERNAME = "admin"
+PASSWORD = "Eni20230"
+
+auth = HTTPDigestAuth(USERNAME, PASSWORD)
+base_url = f"http://{HIKVISION_IP}/ISAPI"
+
+print("="*100)
+print("🎯 RÉCUPÉRATION DES PRÉSENCES HIKVISION - UTILISATEURS BD + AUJOURD'HUI")
+print("="*100)
+
+# =================== CODES D'ÉVÉNEMENTS DÉTAILLÉS ===================
+PRESENCE_EVENTS = {
+    # ===== AUTHENTIFICATIONS RÉUSSIES DÉTAILLÉES =====
+    (5, 1): ("Carte RFID", "Carte", True),
+    (5, 2): ("Empreinte digitale", "Empreinte", True),
+    (5, 3): ("Reconnaissance faciale", "Visage", True),
+    (5, 4): ("Code PIN", "Code", True),
+    (5, 5): ("Multi-authentification", "Combiné", True),
+    
+    # Événements d'ouverture/passage
+    (5, 21): ("Ouverture porte", "Ouverture", True),
+    (5, 38): ("Sortie validée", "Sortie", True),
+    (5, 39): ("Entrée validée", "Entrée", True),
+    (5, 104): ("Multi-vérification", "Multi", True),
+    
+    # ===== AUTHENTIFICATIONS ÉCHOUÉES =====
+    (5, 22): ("Carte sans permission", "Carte", False),
+    (5, 75): ("Authentification échouée", "Inconnu", False),
+    (5, 76): ("Carte expirée", "Carte", False),
+    (5, 77): ("Hors période autorisée", "Carte", False),
+    (5, 78): ("Porte verrouillée", "Carte", False),
+    (5, 79): ("Code PIN incorrect", "Code", False),
+}
+
+def get_presence_info(major, minor):
+    """Retourne (description, méthode, validé)"""
+    return PRESENCE_EVENTS.get((major, minor))
+
+# =================== ÉTAPE 1: RÉCUPÉRATION DES UTILISATEURS BD ===================
+def get_registered_users():
+    """Récupère tous les utilisateurs enregistrés dans la BD"""
+    print("\n📋 ÉTAPE 1: Récupération des utilisateurs enregistrés...")
+    print("-" * 100)
+    
+    all_users = []
+    position = 0
+    
+    while True:
+        search_data = {
+            "UserInfoSearchCond": {
+                "searchID": "1",
+                "searchResultPosition": position,
+                "maxResults": 30
+            }
+        }
+        
+        url = f"{base_url}/AccessControl/UserInfo/Search?format=json"
+        headers = {'Content-Type': 'application/json'}
+        
+        try:
+            response = requests.post(url, json=search_data, auth=auth, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                people = []
+                if 'UserInfoSearch' in data:
+                    user_info_list = data['UserInfoSearch'].get('UserInfo', [])
+                    if isinstance(user_info_list, dict):
+                        people = [user_info_list]
+                    elif isinstance(user_info_list, list):
+                        people = user_info_list
+                
+                if not people:
+                    break
+                
+                all_users.extend(people)
+                position += len(people)
+                
+                if len(people) < 30:
+                    break
+            else:
+                print(f"❌ Erreur HTTP {response.status_code}")
+                break
+                
+        except Exception as e:
+            print(f"❌ Erreur: {e}")
+            break
+    
+    # Créer un dictionnaire {employeeNo: nom} pour lookup rapide
+    users_dict = {}
+    for user in all_users:
+        emp_no = user.get('employeeNo', '')
+        name = user.get('name', 'Inconnu')
+        users_dict[str(emp_no)] = name
+    
+    print(f"✅ {len(users_dict)} utilisateurs trouvés dans la BD")
+    print("\n👥 Liste des utilisateurs enregistrés:")
+    for emp_no, name in sorted(users_dict.items()):
+        print(f"   {emp_no:<15} {name}")
+    
+    return users_dict
+
+# =================== ÉTAPE 2: RÉCUPÉRATION DES ÉVÉNEMENTS ===================
+def get_today_events(registered_users):
+    """Récupère les événements d'aujourd'hui pour les utilisateurs enregistrés"""
+    
+    today = date.today()
+    today_str = today.strftime("%Y-%m-%d")
+    
+    print(f"\n📅 ÉTAPE 2: Récupération des événements du {today_str}...")
+    print("-" * 100)
+    
+    all_presences = []
+    all_events_debug = []
+    position = 0
+    max_per_request = 30
+    
+    batch_number = 1
+    total_expected = None
+    
+    while True:
+        json_payload = {
+            "ACSEventCond": {
+                "searchID": "1",
+                "searchResultPosition": position,
+                "maxResults": max_per_request,
+                "major": 5,
+                "minor": 0
+            }
+        }
+        
+        try:
+            response = requests.post(
+                f"{base_url}/AccessControl/ACSEvent?format=json",
+                json=json_payload,
+                auth=auth,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if total_expected is None:
+                    total_expected = data.get("AcsEvent", {}).get("totalMatches", 0)
+                
+                info_list = data.get("AcsEvent", {}).get("InfoList", [])
+                num_matches = data.get("AcsEvent", {}).get("numOfMatches", 0)
+                response_status = data.get("AcsEvent", {}).get("responseStatusStrg", "")
+                
+                if info_list:
+                    for evt in info_list:
+                        # Vérifier la date
+                        evt_datetime_str = evt.get("time", "")
+                        if not evt_datetime_str.startswith(today_str):
+                            continue  # Passer les événements d'autres jours
+                        
+                        # Récupérer l'ID employé
+                        emp_id = evt.get("employeeNoString", evt.get("employeeNo", "-"))
+                        emp_id_str = str(emp_id)
+                        
+                        # Vérifier si l'employé est dans la BD
+                        if emp_id_str not in registered_users and emp_id != "-":
+                            continue  # Ignorer les événements d'utilisateurs non enregistrés
+                        
+                        # Si emp_id est "-", on garde quand même pour les événements d'ouverture
+                        name = registered_users.get(emp_id_str, evt.get("name", "-"))
+                        
+                        major = evt.get("major", 0)
+                        minor = evt.get("minor", 0)
+                        
+                        all_events_debug.append({
+                            "major": major,
+                            "minor": minor,
+                            "employee_id": emp_id,
+                            "name": name,
+                            "datetime": evt_datetime_str,
+                            "card_no": evt.get("cardNo", "-"),
+                            "door_no": evt.get("doorNo", "-")
+                        })
+                        
+                        presence_info = get_presence_info(major, minor)
+                        
+                        if presence_info:
+                            description, method, validated = presence_info
+                            all_presences.append({
+                                "employee_id": emp_id,
+                                "name": name,
+                                "description": description,
+                                "method": method,
+                                "validated": "✅ Validé" if validated else "❌ Refusé",
+                                "datetime": evt_datetime_str,
+                                "card_no": evt.get("cardNo", "-"),
+                                "door_no": evt.get("doorNo", "-"),
+                                "major": major,
+                                "minor": minor
+                            })
+                    
+                    progress = position + num_matches
+                    print(f"✅ Lot {batch_number}: {num_matches} événements traités | Présences aujourd'hui: {len(all_presences)}")
+                    
+                    if response_status != "MORE" or num_matches < max_per_request:
+                        print("\n🎉 Récupération terminée!")
+                        break
+                    
+                    position += max_per_request
+                    batch_number += 1
+                else:
+                    break
+            
+            else:
+                print(f"❌ Erreur HTTP {response.status_code}")
+                break
+        
+        except Exception as e:
+            print(f"❌ Erreur: {e}")
+            break
+    
+    return all_presences, all_events_debug
+
+# =================== EXÉCUTION PRINCIPALE ===================
+print(f"\n📅 Date du jour: {date.today().strftime('%d/%m/%Y')}")
+
+# Étape 1: Récupérer les utilisateurs
+registered_users = get_registered_users()
+
+if not registered_users:
+    print("\n❌ Aucun utilisateur trouvé dans la BD!")
+    exit(1)
+
+# Étape 2: Récupérer les événements d'aujourd'hui
+all_presences, all_events_debug = get_today_events(registered_users)
+
+# =================== RÉSULTATS ===================
+print("\n" + "="*100)
+print(f"🎉 TOTAL DES PRÉSENCES AUJOURD'HUI: {len(all_presences)}")
+print("="*100)
+
+if all_presences:
+    # Sauvegarder en JSON
+    with open("presences_aujourdhui.json", "w", encoding="utf-8") as f:
+        json.dump(all_presences, f, indent=2, ensure_ascii=False)
+    print("\n✅ Présences sauvegardées: presences_aujourdhui.json")
+    
+    # Sauvegarder debug
+    with open("events_debug_aujourdhui.json", "w", encoding="utf-8") as f:
+        json.dump(all_events_debug, f, indent=2, ensure_ascii=False)
+    print("✅ Debug sauvegardé: events_debug_aujourdhui.json")
+    
+    # CSV
+    try:
+        with open("presences_aujourdhui.csv", "w", newline='', encoding='utf-8-sig') as f:
+            fieldnames = ['employee_id', 'name', 'description', 'method', 'validated', 'datetime', 'card_no', 'door_no', 'major', 'minor']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_presences)
+        print("✅ Export CSV: presences_aujourdhui.csv")
+    except Exception as e:
+        print(f"❌ Erreur CSV: {e}")
+    
+    # Affichage des présences VALIDÉES
+    validated_presences = [p for p in all_presences if "Validé" in p['validated']]
+    
+    if validated_presences:
+        print("\n" + "="*100)
+        print(f"📋 PRÉSENCES VALIDÉES AUJOURD'HUI ({len(validated_presences)} au total):")
+        print("="*100)
+        print(f"{'ID':<15} {'Nom':<25} {'Méthode':<20} {'Description':<30} {'Heure':<10}")
+        print("="*100)
+        
+        for p in validated_presences:
+            emp_id = str(p['employee_id'])[:14]
+            name = str(p['name'])[:24]
+            method = str(p['method'])[:19]
+            description = str(p['description'])[:29]
+            time_only = p['datetime'].split('T')[1][:8] if 'T' in p['datetime'] else p['datetime'][-8:]
+            
+            print(f"{emp_id:<15} {name:<25} {method:<20} {description:<30} {time_only:<10}")
+    
+    print("\n" + "="*100)
+    print("📊 STATISTIQUES D'AUJOURD'HUI")
+    print("="*100)
+    
+    # Validées vs Refusées
+    validated_count = sum(1 for p in all_presences if "Validé" in p['validated'])
+    refused_count = len(all_presences) - validated_count
+    
+    print(f"\n✅ Présences VALIDÉES  : {validated_count}")
+    print(f"❌ Présences REFUSÉES  : {refused_count}")
+    
+    # Par méthode (validées uniquement)
+    if validated_count > 0:
+        method_counts = {}
+        for p in all_presences:
+            if "Validé" in p['validated']:
+                method = p['method']
+                method_counts[method] = method_counts.get(method, 0) + 1
+        
+        print("\n🔐 Méthodes d'authentification utilisées (validées):")
+        for method, count in sorted(method_counts.items(), key=lambda x: x[1], reverse=True):
+            emoji = "💳" if method == "Carte" else "👆" if method == "Empreinte" else "😊" if method == "Visage" else "🔑"
+            print(f"   {emoji} {method:<20} : {count:>5} fois")
+    
+    # Par employé (validées uniquement)
+    employees = {}
+    for p in all_presences:
+        if "Validé" in p['validated'] and p['employee_id'] != "-":
+            emp_id = p['employee_id']
+            name = p['name']
+            if emp_id not in employees:
+                employees[emp_id] = {'name': name, 'count': 0, 'methods': []}
+            employees[emp_id]['count'] += 1
+            employees[emp_id]['methods'].append(p['method'])
+    
+    if employees:
+        print(f"\n👥 Employés présents aujourd'hui: {len(employees)}")
+        sorted_employees = sorted(employees.items(), key=lambda x: x[1]['count'], reverse=True)
+        
+        print("\n📌 Détail des présences par employé:")
+        print(f"{'ID':<15} {'Nom':<25} {'Nb passages':<15} {'Méthodes utilisées'}")
+        print("="*100)
+        for emp_id, data in sorted_employees:
+            name = data['name']
+            count = data['count']
+            methods = ', '.join(set(data['methods']))
+            print(f"{emp_id:<15} {name:<25} {count:<15} {methods}")
+    
+    # Diagnostic des codes
+    print("\n🔢 Codes d'événements trouvés aujourd'hui:")
+    code_counter = Counter()
+    for evt in all_events_debug:
+        code_counter[(evt['major'], evt['minor'])] += 1
+    
+    for (major, minor), count in sorted(code_counter.items(), key=lambda x: x[1], reverse=True):
+        presence_info = get_presence_info(major, minor)
+        if presence_info:
+            description, method, validated = presence_info
+            status = "✅" if validated else "❌"
+            print(f"   ({major}, {minor}): {description:<30} {method:<15} {status} - {count} fois")
+
+else:
+    print("\n⚠️ Aucune présence trouvée pour aujourd'hui")
+    print("   - Vérifiez que des événements ont été enregistrés aujourd'hui")
+    print("   - Vérifiez que les utilisateurs sont bien enregistrés dans la BD")
+
+print("\n" + "="*100)
+print("✅ SCRIPT TERMINÉ!")
+print("="*100)
+print("\n📁 Fichiers générés:")
+print("   1. presences_aujourdhui.json      (toutes les présences d'aujourd'hui)")
+print("   2. presences_aujourdhui.csv       (format Excel)")
+print("   3. events_debug_aujourdhui.json   (données brutes)")
+print("\n💡 Ce script affiche uniquement:")
+print("   ✓ Les utilisateurs enregistrés dans la BD Hikvision")
+print("   ✓ Les événements d'aujourd'hui uniquement")
+print("   ✓ La méthode d'authentification exacte (Carte/Empreinte/Visage)")
+print("\n")
+
+###################################### V7 ##########################################
+
+import requests
+from requests.auth import HTTPDigestAuth
+import json
+import csv
+from datetime import datetime, timedelta
+from collections import Counter
+import time
+
+# =================== CONFIGURATION ===================
+HIKVISION_IP = "192.168.101.24"
+USERNAME = "admin"
+PASSWORD = "Eni20230"
+
+auth = HTTPDigestAuth(USERNAME, PASSWORD)
+base_url = f"http://{HIKVISION_IP}/ISAPI"
+
+print("="*120)
+print("🎯 RÉCUPÉRATION DES PRÉSENCES - UTILISATEURS BD UNIQUEMENT (VERSION DEBUG)")
+print("="*120)
+
+# =================== CODES D'ÉVÉNEMENTS AVEC MÉTHODE DE VALIDATION ===================
+PRESENCE_EVENTS = {
+    # AUTHENTIFICATIONS RÉUSSIES
+    (5, 1): ("Carte", True),
+    (5, 2): ("Empreinte", True),
+    (5, 3): ("Visage", True),
+    (5, 4): ("Code PIN", True),
+    (5, 5): ("Combiné", True),
+    (5, 21): ("Ouverture porte", True),
+    (5, 38): ("Sortie validée", True),
+    (5, 39): ("Entrée validée", True),
+    (5, 104): ("Multi-vérification", True),
+    
+    # AUTHENTIFICATIONS ÉCHOUÉES
+    (5, 22): ("Carte", False),
+    (5, 75): ("Non spécifié", False),
+    (5, 76): ("Carte", False),
+    (5, 77): ("Carte", False),
+    (5, 78): ("Carte", False),
+    (5, 79): ("Code PIN", False),
+}
+
+def normalize_employee_id(emp_id):
+    """Normalise l'ID employé pour la comparaison (enlève zéros, espaces, etc.)"""
+    if not emp_id or emp_id == "-":
+        return None
+    # Convertir en string et enlever espaces
+    emp_id = str(emp_id).strip()
+    # Retourner version originale ET version sans zéros de tête
+    return emp_id, emp_id.lstrip('0')
+
+def employee_ids_match(id1, id2):
+    """Compare deux IDs employés de manière flexible"""
+    norm1 = normalize_employee_id(id1)
+    norm2 = normalize_employee_id(id2)
+    
+    if not norm1 or not norm2:
+        return False
+    
+    # Comparer les deux versions (avec et sans zéros)
+    return (norm1[0] == norm2[0] or norm1[0] == norm2[1] or 
+            norm1[1] == norm2[0] or norm1[1] == norm2[1])
+
+def get_presence_info(major, minor):
+    """Retourne (méthode, validé) ou None"""
+    return PRESENCE_EVENTS.get((major, minor))
+
+def get_period_of_day(hour):
+    """Retourne 'Jour' ou 'Soir' selon l'heure"""
+    if 6 <= hour < 18:
+        return "Jour"
+    else:
+        return "Soir"
+
+def get_auth_method_icon(method):
+    """Retourne l'icône selon la méthode"""
+    if method == "Visage":
+        return "👤"
+    elif method == "Empreinte":
+        return "👆"
+    elif method == "Carte":
+        return "💳"
+    elif method == "Code PIN":
+        return "🔑"
+    else:
+        return "🔓"
+
+# =================== ÉTAPE 1: RÉCUPÉRATION DES UTILISATEURS BD ===================
+print("\n📂 ÉTAPE 1: Récupération des utilisateurs dans la base de données")
+print("-"*120)
+
+registered_users = {}
+registered_users_normalized = {}
+position = 0
+
+while True:
+    search_data = {
+        "UserInfoSearchCond": {
+            "searchID": "1",
+            "searchResultPosition": position,
+            "maxResults": 30
+        }
+    }
+    
+    url = f"{base_url}/AccessControl/UserInfo/Search?format=json"
+    headers = {'Content-Type': 'application/json'}
+    
+    try:
+        response = requests.post(url, json=search_data, auth=auth, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            people = []
+            
+            if 'UserInfoSearch' in data:
+                user_info_list = data['UserInfoSearch'].get('UserInfo', [])
+                if isinstance(user_info_list, dict):
+                    people = [user_info_list]
+                elif isinstance(user_info_list, list):
+                    people = user_info_list
+            
+            if not people:
+                break
+            
+            for person in people:
+                emp_no = person.get('employeeNo', '')
+                name = person.get('name', 'Inconnu')
+                
+                if emp_no:
+                    emp_no_str = str(emp_no)
+                    registered_users[emp_no_str] = {
+                        'name': name,
+                        'employeeNo': emp_no,
+                        'userType': person.get('userType', 'normal')
+                    }
+                    # Ajouter aussi la version normalisée
+                    normalized = normalize_employee_id(emp_no_str)
+                    if normalized:
+                        registered_users_normalized[normalized[1]] = emp_no_str
+            
+            position += len(people)
+            
+            if len(people) < 30:
+                break
+        else:
+            print(f"❌ Erreur récupération utilisateurs: {response.status_code}")
+            break
+            
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        break
+
+print(f"✅ {len(registered_users)} utilisateurs trouvés dans la BD:")
+print(f"{'ID Original':<20} {'ID Normalisé':<20} {'Nom':<25}")
+print("-"*120)
+for emp_id, user_info in list(registered_users.items())[:15]:
+    normalized = normalize_employee_id(emp_id)
+    norm_id = normalized[1] if normalized else "N/A"
+    print(f"{emp_id:<20} {norm_id:<20} {user_info['name']:<25}")
+if len(registered_users) > 15:
+    print(f"... et {len(registered_users) - 15} autres utilisateurs")
+
+# =================== ÉTAPE 2: RÉCUPÉRATION DES ÉVÉNEMENTS ===================
+print("\n📡 ÉTAPE 2: Récupération des événements de présence")
+print("-"*120)
+
+# Date d'aujourd'hui
+today = datetime.now()
+start_of_day = today.replace(hour=0, minute=0, second=0, microsecond=0)
+print(f"📅 Date du jour: {today.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"🔍 Filtrage depuis: {start_of_day.strftime('%Y-%m-%d %H:%M:%S')}")
+print()
+
+all_presences = []
+all_events_checked = []
+position = 0
+max_per_request = 30
+batch_number = 1
+max_batches = 50  # Limite pour éviter boucle infinie
+
+while batch_number <= max_batches:
+    json_payload = {
+        "ACSEventCond": {
+            "searchID": "1",
+            "searchResultPosition": position,
+            "maxResults": max_per_request,
+            "major": 5,
+            "minor": 0
+        }
+    }
+    
+    try:
+        response = requests.post(
+            f"{base_url}/AccessControl/ACSEvent?format=json",
+            json=json_payload,
+            auth=auth,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            info_list = data.get("AcsEvent", {}).get("InfoList", [])
+            num_matches = data.get("AcsEvent", {}).get("numOfMatches", 0)
+            response_status = data.get("AcsEvent", {}).get("responseStatusStrg", "")
+            
+            if info_list:
+                for evt in info_list:
+                    # Récupérer les infos de l'événement
+                    employee_id_raw = evt.get("employeeNoString", evt.get("employeeNo", "-"))
+                    employee_id = str(employee_id_raw) if employee_id_raw else "-"
+                    
+                    event_time_str = evt.get("time", "")
+                    major = evt.get("major", 0)
+                    minor = evt.get("minor", 0)
+                    name_in_event = evt.get("name", "-")
+                    
+                    # Parser la date de l'événement
+                    try:
+                        event_time = datetime.fromisoformat(event_time_str.replace('+03:00', ''))
+                    except:
+                        event_time = None
+                    
+                    # FILTRE 1: Vérifier que c'est aujourd'hui
+                    if event_time and event_time < start_of_day:
+                        continue
+                    
+                    # Stocker pour debug
+                    all_events_checked.append({
+                        'employee_id_raw': employee_id,
+                        'name': name_in_event,
+                        'major': major,
+                        'minor': minor,
+                        'time': event_time_str
+                    })
+                    
+                    # FILTRE 2: Vérifier que l'employé est dans la BD (comparaison flexible)
+                    user_found = None
+                    if employee_id != "-":
+                        # Chercher dans les IDs originaux
+                        if employee_id in registered_users:
+                            user_found = employee_id
+                        else:
+                            # Chercher avec normalisation
+                            normalized = normalize_employee_id(employee_id)
+                            if normalized and normalized[1] in registered_users_normalized:
+                                user_found = registered_users_normalized[normalized[1]]
+                    
+                    if not user_found:
+                        continue
+                    
+                    # Récupérer les infos de l'utilisateur
+                    user_info = registered_users.get(user_found, {})
+                    user_name = user_info.get('name', 'Inconnu')
+                    
+                    # Analyser le type d'événement
+                    presence_info = get_presence_info(major, minor)
+                    
+                    if presence_info:
+                        method, validated = presence_info
+                        
+                        # Déterminer période (Jour/Soir)
+                        period = get_period_of_day(event_time.hour) if event_time else "N/A"
+                        
+                        # Formater la date
+                        date_formatted = event_time.strftime('%d-%m-%Y') if event_time else "N/A"
+                        time_formatted = event_time.strftime('%H:%M:%S') if event_time else "N/A"
+                        
+                        all_presences.append({
+                            "employee_id": user_found,
+                            "name": user_name,
+                            "event_type": "Sortie validée" if minor == 38 else "Entrée validée" if minor == 39 else "Accès",
+                            "auth_method": method,
+                            "validated": "✅ Validé" if validated else "❌ Refusé",
+                            "date": date_formatted,
+                            "time": time_formatted,
+                            "period": period,
+                            "datetime": event_time_str,
+                            "card_no": evt.get("cardNo", "-"),
+                            "door_no": evt.get("doorNo", "-"),
+                            "major": major,
+                            "minor": minor
+                        })
+                
+                print(f"✅ Lot {batch_number}: {num_matches} événements | Vérifiés aujourd'hui: {len(all_events_checked)} | Présences BD trouvées: {len(all_presences)}")
+                
+                if response_status != "MORE" or num_matches < max_per_request:
+                    print("\n🎉 Récupération terminée!")
+                    break
+                
+                position += max_per_request
+                batch_number += 1
+                time.sleep(0.1)  # Petit délai pour éviter surcharge
+            else:
+                break
+        else:
+            print(f"⚠️  Erreur HTTP {response.status_code} au lot {batch_number}")
+            if batch_number > 1:
+                print("   → Continuation avec les données récupérées...")
+            break
+    
+    except Exception as e:
+        print(f"❌ Erreur au lot {batch_number}: {e}")
+        break
+
+# DEBUG: Afficher quelques événements vérifiés
+if all_events_checked and len(all_presences) == 0:
+    print("\n⚠️  DEBUG: Voici 10 événements d'aujourd'hui trouvés:")
+    print(f"{'ID Événement':<20} {'Nom':<20} {'Code':<10} {'Heure':<20}")
+    print("-"*120)
+    for evt in all_events_checked[:10]:
+        print(f"{evt['employee_id_raw']:<20} {evt['name']:<20} ({evt['major']},{evt['minor']})  {evt['time']:<20}")
+    print("\n💡 Ces IDs ne correspondent pas aux IDs dans la BD. Vérifiez le format des IDs.")
+
+# =================== RÉSULTATS ===================
+print("\n" + "="*120)
+print(f"🎉 TOTAL DES PRÉSENCES (UTILISATEURS BD - AUJOURD'HUI): {len(all_presences)}")
+print("="*120)
+
+if all_presences:
+    # Sauvegarder en JSON
+    with open("presences_bd_aujourdhui.json", "w", encoding="utf-8") as f:
+        json.dump(all_presences, f, indent=2, ensure_ascii=False)
+    print("\n✅ Présences sauvegardées: presences_bd_aujourdhui.json")
+    
+    # CSV avec les nouvelles colonnes
+    try:
+        with open("presences_bd_aujourdhui.csv", "w", newline='', encoding='utf-8-sig') as f:
+            fieldnames = ['employee_id', 'name', 'event_type', 'auth_method', 'date', 'time', 'period', 'validated', 'card_no', 'door_no']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_presences)
+        print("✅ Export CSV: presences_bd_aujourdhui.csv")
+    except Exception as e:
+        print(f"❌ Erreur CSV: {e}")
+    
+    # Filtrer les présences validées
+    validated_presences = [p for p in all_presences if "Validé" in p['validated']]
+    
+    if validated_presences:
+        print("\n" + "="*120)
+        print(f"📋 PRÉSENCES VALIDÉES AUJOURD'HUI ({len(validated_presences)} au total):")
+        print("="*120)
+        print(f"{'ID':<12} {'Nom':<20} {'Type':<18} {'Par':<15} {'Date':<15} {'Heure':<12} {'Période':<10}")
+        print("="*120)
+        
+        for p in validated_presences:
+            emp_id = str(p['employee_id'])[:11]
+            name = str(p['name'])[:19]
+            event_type = str(p['event_type'])[:17]
+            
+            # Méthode avec icône
+            auth_method = p['auth_method']
+            icon = get_auth_method_icon(auth_method)
+            method_display = f"{icon} {auth_method}"[:14]
+            
+            date_str = p['date']
+            time_str = p['time']
+            period = p['period']
+            
+            print(f"{emp_id:<12} {name:<20} {event_type:<18} {method_display:<15} {date_str:<15} {time_str:<12} {period:<10}")
+    
+    print("\n" + "="*120)
+    print("📊 STATISTIQUES FINALES")
+    print("="*120)
+    
+    # Validées vs Refusées
+    validated_count = len(validated_presences)
+    refused_count = len(all_presences) - validated_count
+    
+    print(f"\n✅ Présences VALIDÉES  : {validated_count} ({validated_count/len(all_presences)*100:.1f}%)")
+    print(f"❌ Présences REFUSÉES  : {refused_count} ({refused_count/len(all_presences)*100:.1f}%)")
+    
+    # Par méthode d'authentification (validées uniquement)
+    if validated_count > 0:
+        method_counts = {}
+        for p in validated_presences:
+            method = p['auth_method']
+            method_counts[method] = method_counts.get(method, 0) + 1
+        
+        print("\n🔐 Méthodes d'authentification (validées):")
+        for method, count in sorted(method_counts.items(), key=lambda x: x[1], reverse=True):
+            icon = get_auth_method_icon(method)
+            print(f"   {icon} {method:<20} : {count:>5} fois ({count/validated_count*100:.1f}%)")
+    
+    # Par période (Jour/Soir)
+    period_counts = {"Jour": 0, "Soir": 0}
+    for p in validated_presences:
+        period = p['period']
+        if period in period_counts:
+            period_counts[period] += 1
+    
+    print("\n🌅 Répartition Jour/Soir (validées):")
+    print(f"   ☀️  Jour (06h-18h)  : {period_counts['Jour']:>5} fois ({period_counts['Jour']/validated_count*100:.1f}%)")
+    print(f"   🌙 Soir (18h-06h)  : {period_counts['Soir']:>5} fois ({period_counts['Soir']/validated_count*100:.1f}%)")
+    
+    # Par employé (validées uniquement)
+    employees = {}
+    for p in validated_presences:
+        emp_id = p['employee_id']
+        if emp_id not in employees:
+            employees[emp_id] = {
+                'name': p['name'],
+                'count': 0,
+                'methods': []
+            }
+        employees[emp_id]['count'] += 1
+        employees[emp_id]['methods'].append(p['auth_method'])
+    
+    if employees:
+        print(f"\n👥 Nombre d'employés présents aujourd'hui: {len(employees)}")
+        sorted_employees = sorted(employees.items(), key=lambda x: x[1]['count'], reverse=True)
+        
+        print("\n🏆 Top employés présents aujourd'hui:")
+        print(f"{'ID':<12} {'Nom':<20} {'Total':<8} {'Méthodes utilisées':<40}")
+        print("-"*120)
+        for emp_id, data in sorted_employees[:15]:
+            name = data['name'][:19]
+            count = data['count']
+            methods = Counter(data['methods'])
+            methods_str = ", ".join([f"{get_auth_method_icon(m)}{m}({c})" for m, c in methods.most_common(3)])
+            print(f"{emp_id:<12} {name:<20} {count:<8} {methods_str:<40}")
+
+else:
+    print("\n⚠️  Aucune présence trouvée pour les utilisateurs BD aujourd'hui")
+    print("\n💡 Raisons possibles:")
+    print("   1. Les IDs dans les événements ne correspondent pas aux IDs dans la BD")
+    print("   2. Aucun événement aujourd'hui pour ces utilisateurs")
+    print(f"   3. Total d'événements vérifiés aujourd'hui: {len(all_events_checked)}")
+
+print("\n" + "="*120)
+print("✅ SCRIPT TERMINÉ!")
+print("="*120)
+print("\n📝 Résumé:")
+print(f"   • {len(registered_users)} utilisateurs dans la BD")
+print(f"   • {len(all_events_checked)} événements d'aujourd'hui vérifiés")
+print(f"   • {len(all_presences)} présences correspondant aux utilisateurs BD")
+print("\n💡 Légende des méthodes:")
+print("   👤 Visage    👆 Empreinte    💳 Carte    🔑 Code PIN")
+print()
+
+###################################" Version important V8 #############################################"
+
+import requests
+from requests.auth import HTTPDigestAuth
+import json
+import csv
+from datetime import datetime
+from collections import Counter
+
+# =================== CONFIGURATION ===================
+HIKVISION_IP = "192.168.101.24"
+USERNAME = "admin"
+PASSWORD = "Eni20230"
+
+auth = HTTPDigestAuth(USERNAME, PASSWORD)
+base_url = f"http://{HIKVISION_IP}/ISAPI"
+
+print("="*100)
+print("🎯 RÉCUPÉRATION DES PRÉSENCES HIKVISION - VERSION CORRIGÉE")
+print("="*100)
+
+# =================== ÉVÉNEMENTS DE PRÉSENCE ===================
+# Liste COMPLÈTE basée sur la documentation Hikvision et vos données
+PRESENCE_EVENTS = {
+    # ===== AUTHENTIFICATIONS RÉUSSIES =====
+    (5, 1): ("Carte", True),
+    (5, 2): ("Empreinte", True),
+    (5, 3): ("Facial", True),
+    (5, 4): ("Code PIN", True),
+    (5, 5): ("Combiné", True),
+    
+    # NOUVEAUX CODES TROUVÉS DANS VOS DONNÉES (authentifications réussies)
+    (5, 21): ("Ouverture porte", True),      # Porte ouverte (accès autorisé)
+    (5, 38): ("Sortie validée", True),       # Sortie autorisée
+    (5, 39): ("Entrée validée", True),       # Entrée autorisée
+    (5, 104): ("Multi-vérification", True),  # Authentification multi-facteurs
+    
+    # ===== AUTHENTIFICATIONS ÉCHOUÉES =====
+    (5, 22): ("Carte", False),         # Pas de permission
+    (5, 75): ("Non spécifié", False),  # Auth échouée
+    (5, 76): ("Carte", False),         # Carte expirée
+    (5, 77): ("Carte", False),         # Hors période
+    (5, 78): ("Carte", False),         # Porte verrouillée
+    (5, 79): ("Code PIN", False),      # Code incorrect
+}
+
+def get_presence_info(major, minor):
+    """Retourne (méthode, validé) ou None si pas un événement de présence"""
+    return PRESENCE_EVENTS.get((major, minor))
+
+# =================== RÉCUPÉRATION ===================
+all_presences = []
+all_events_debug = []
+position = 0
+max_per_request = 30
+
+print("\n📡 Récupération des événements...\n")
+
+batch_number = 1
+total_expected = None
+
+while True:
+    json_payload = {
+        "ACSEventCond": {
+            "searchID": "1",
+            "searchResultPosition": position,
+            "maxResults": max_per_request,
+            "major": 5,
+            "minor": 0
+        }
+    }
+    
+    try:
+        response = requests.post(
+            f"{base_url}/AccessControl/ACSEvent?format=json",
+            json=json_payload,
+            auth=auth,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if total_expected is None:
+                total_expected = data.get("AcsEvent", {}).get("totalMatches", 0)
+                print(f"📊 Total d'événements d'authentification : {total_expected}")
+                print("="*100)
+            
+            info_list = data.get("AcsEvent", {}).get("InfoList", [])
+            num_matches = data.get("AcsEvent", {}).get("numOfMatches", 0)
+            response_status = data.get("AcsEvent", {}).get("responseStatusStrg", "")
+            
+            if info_list:
+                for evt in info_list:
+                    major = evt.get("major", 0)
+                    minor = evt.get("minor", 0)
+                    
+                    all_events_debug.append({
+                        "major": major,
+                        "minor": minor,
+                        "employee_id": evt.get("employeeNoString", evt.get("employeeNo", "-")),
+                        "name": evt.get("name", "-"),
+                        "datetime": evt.get("time", "-"),
+                        "card_no": evt.get("cardNo", "-"),
+                        "door_no": evt.get("doorNo", "-")
+                    })
+                    
+                    presence_info = get_presence_info(major, minor)
+                    
+                    if presence_info:
+                        method, validated = presence_info
+                        all_presences.append({
+                            "employee_id": evt.get("employeeNoString", evt.get("employeeNo", "-")),
+                            "name": evt.get("name", "-"),
+                            "method": method,
+                            "validated": "✅ Validé" if validated else "❌ Refusé",
+                            "datetime": evt.get("time", "-"),
+                            "card_no": evt.get("cardNo", "-"),
+                            "door_no": evt.get("doorNo", "-"),
+                            "major": major,
+                            "minor": minor
+                        })
+                
+                progress = position + num_matches
+                percent = (progress / total_expected * 100) if total_expected else 0
+                print(f"✅ Lot {batch_number}: {num_matches} événements | Présences trouvées: {len(all_presences)} | Progression: {progress}/{total_expected} ({percent:.1f}%)")
+                
+                if response_status != "MORE" or num_matches < max_per_request:
+                    print("\n🎉 Récupération terminée!")
+                    break
+                
+                position += max_per_request
+                batch_number += 1
+            else:
+                break
+        
+        else:
+            print(f"❌ Erreur HTTP {response.status_code}")
+            break
+    
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        break
+
+# =================== DIAGNOSTIC ===================
+print("\n" + "="*100)
+print("🔍 DIAGNOSTIC DES CODES D'ÉVÉNEMENTS")
+print("="*100)
+
+code_counter = Counter()
+for evt in all_events_debug:
+    code_counter[(evt['major'], evt['minor'])] += 1
+
+print("\n📋 Codes (major, minor) trouvés:")
+print(f"{'Code':<20} {'Occurrences':<15} {'Type':<20} {'Statut'}")
+print("="*100)
+
+for (major, minor), count in sorted(code_counter.items(), key=lambda x: x[1], reverse=True):
+    presence_info = get_presence_info(major, minor)
+    if presence_info:
+        method, validated = presence_info
+        status = "✅ VALIDÉ" if validated else "❌ REFUSÉ"
+        type_auth = method
+    else:
+        status = "⚠️  NON RECONNU"
+        type_auth = "Inconnu"
+    
+    print(f"({major}, {minor}){' ':<13} {count:<15} {type_auth:<20} {status}")
+
+# =================== RÉSULTATS ===================
+print("\n" + "="*100)
+print(f"🎉 TOTAL DES PRÉSENCES: {len(all_presences)}")
+print("="*100)
+
+if all_presences:
+    # Sauvegarder en JSON
+    with open("presences_completes.json", "w", encoding="utf-8") as f:
+        json.dump(all_presences, f, indent=2, ensure_ascii=False)
+    print("\n✅ Présences sauvegardées: presences_completes.json")
+    
+    # Sauvegarder debug
+    with open("events_debug.json", "w", encoding="utf-8") as f:
+        json.dump(all_events_debug, f, indent=2, ensure_ascii=False)
+    print("✅ Debug sauvegardé: events_debug.json")
+    
+    # CSV
+    try:
+        with open("presences_completes.csv", "w", newline='', encoding='utf-8-sig') as f:
+            fieldnames = ['employee_id', 'name', 'method', 'validated', 'datetime', 'card_no', 'door_no', 'major', 'minor']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_presences)
+        print("✅ Export CSV: presences_completes.csv")
+    except Exception as e:
+        print(f"❌ Erreur CSV: {e}")
+    
+    # Aperçu des dernières présences VALIDÉES
+    validated_presences = [p for p in all_presences if "Validé" in p['validated']]
+    
+    if validated_presences:
+        print("\n" + "="*100)
+        print(f"📋 DERNIÈRES PRÉSENCES VALIDÉES (sur {len(validated_presences)} au total):")
+        print("="*100)
+        print(f"{'ID':<10} {'Nom':<25} {'Méthode':<20} {'Date/Heure':<25} {'Code':<10}")
+        print("="*100)
+        
+        for p in validated_presences[-30:]:
+            emp_id = str(p['employee_id'])[:9]
+            name = str(p['name'])[:24]
+            method = str(p['method'])[:19]
+            dt = str(p['datetime'])[:24]
+            code = f"({p['major']},{p['minor']})"
+            
+            print(f"{emp_id:<10} {name:<25} {method:<20} {dt:<25} {code:<10}")
+    
+    print("\n" + "="*100)
+    print("📊 STATISTIQUES FINALES")
+    print("="*100)
+    
+    # Validées vs Refusées
+    validated_count = sum(1 for p in all_presences if "Validé" in p['validated'])
+    refused_count = len(all_presences) - validated_count
+    
+    print(f"\n✅ Présences VALIDÉES  : {validated_count} ({validated_count/len(all_presences)*100:.1f}%)")
+    print(f"❌ Présences REFUSÉES  : {refused_count} ({refused_count/len(all_presences)*100:.1f}%)")
+    
+    # Par méthode (validées uniquement)
+    if validated_count > 0:
+        method_counts = {}
+        for p in all_presences:
+            if "Validé" in p['validated']:
+                method = p['method']
+                method_counts[method] = method_counts.get(method, 0) + 1
+        
+        print("\n🔐 Méthodes d'authentification (validées):")
+        for method, count in sorted(method_counts.items(), key=lambda x: x[1], reverse=True):
+            print(f"   {method:<20} : {count:>5} fois")
+    
+    # Par employé (validées uniquement)
+    employees = {}
+    employee_names = {}
+    for p in all_presences:
+        if "Validé" in p['validated'] and p['employee_id'] != "-":
+            emp_id = p['employee_id']
+            employees[emp_id] = employees.get(emp_id, 0) + 1
+            if p['name'] != "-":
+                employee_names[emp_id] = p['name']
+    
+    if employees:
+        print(f"\n👥 Nombre d'employés avec présences validées: {len(employees)}")
+        sorted_employees = sorted(employees.items(), key=lambda x: x[1], reverse=True)
+        
+        print("\n🏆 Top 15 des employés les plus présents:")
+        for emp_id, count in sorted_employees[:15]:
+            name = employee_names.get(emp_id, "Inconnu")
+            print(f"   {emp_id:<10} {name:<25} : {count:>5} présences")
+    
+    # Par code
+    print("\n🔢 Répartition par code d'événement:")
+    code_stats = {}
+    for p in all_presences:
+        code = f"({p['major']}, {p['minor']})"
+        validated = "Validé" in p['validated']
+        key = (code, validated)
+        code_stats[key] = code_stats.get(key, 0) + 1
+    
+    for (code, validated), count in sorted(code_stats.items(), key=lambda x: x[1], reverse=True):
+        status = "✅ Validé" if validated else "❌ Refusé"
+        print(f"   {code:<15} {status:<12} : {count:>5} fois")
+
+print("\n" + "="*100)
+print("✅ SCRIPT TERMINÉ!")
+print("="*100)
+print("\n📁 Fichiers générés:")
+print("   1. presences_completes.json  (toutes les présences)")
+print("   2. presences_completes.csv   (format Excel)")
+print("   3. events_debug.json         (données brutes)")
+print("\n💡 Vous devriez maintenant voir des présences VALIDÉES !")
+print("\n")
+
+
+
+####################### Page ajouter user , mitokana ################################
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Ajouter un utilisateur - Système de Sécurité Intelligent</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #e0e6ed;
+    }
+
+    .container {
+      max-width: 1100px;
+      background-color: #1e2a38;
+      padding: 30px;
+      margin-top: 50px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 188, 212, 0.15);
+    }
+
+    h3 {
+      color: #00bcd4;
+    }
+
+    .form-label {
+      font-weight: 500;
+    }
+
+    .form-control, .form-select {
+      border-radius: 10px;
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: #00bcd4;
+      box-shadow: 0 0 0 0.2rem rgba(0, 188, 212, 0.25);
+    }
+
+    .btn-primary, .btn-outline-primary, .btn-outline-success {
+      border-radius: 8px;
+      font-weight: 500;
+    }
+
+    .btn-outline-primary:hover, .btn-outline-success:hover {
+      background-color: #00bcd4;
+      color: white;
+    }
+
+    .image-preview-container {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding: 10px;
+      border: 1px solid #495057;
+      border-radius: 10px;
+      background-color: #ffffff15;
+      scroll-behavior: smooth;
+    }
+
+    .image-preview-container img {
+      width: 120px;
+      height: 90px;
+      object-fit: cover;
+      margin-right: 10px;
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      transition: transform 0.3s ease;
+    }
+
+    .image-preview-container img:hover {
+      transform: scale(1.05);
+      border-color: #00bcd4;
+    }
+
+    .alert-success {
+      background-color: #0d6efd22;
+      border: 1px solid #00bcd4;
+      color: #e0f7fa;
+    }
+
+    ::placeholder {
+      color: #6c757d;
+      opacity: 0.8;
+    }
+
+    .camera-container {
+      position: relative;
+      border: 2px solid #00bcd4;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+      margin-bottom: 10px;
+    }
+
+    .camera-stream {
+      width: 100%;
+      height: auto;
+      display: block;
+      min-height: 300px;
+      object-fit: contain;
+    }
+
+    .camera-type-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .camera-type-btn {
+      flex: 1;
+      padding: 10px;
+      border: 2px solid #00bcd4;
+      background: #1e2a38;
+      color: #00bcd4;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 500;
+    }
+
+    .camera-type-btn.active {
+      background: #00bcd4;
+      color: white;
+    }
+
+    .camera-type-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 188, 212, 0.3);
+    }
+
+    .method-choice-container {
+      background: #2a3f5f;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h3 class="mb-4 text-center">🛡️ Ajouter un utilisateur au système</h3>
+
+    {% if message %}
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+      </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" action="/register_with_sync">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Employee ID *:</label>
+          <input type="text" name="employee_no" class="form-control" required placeholder="Ex : EMP001">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Nom *:</label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">CIN :</label>
+          <input type="text" name="cin" class="form-control" required placeholder="Ex : AB123456">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Email :</label>
+          <input type="email" name="email" class="form-control" placeholder="exemple@mail.com">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Téléphone :</label>
+          <input type="tel" name="telephone" class="form-control" placeholder="+261 32 00 000 00">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Adresse :</label>
+          <textarea name="address" class="form-control" rows="2" placeholder="Adresse complète"></textarea>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Type d'utilisateur :</label>
+          <select name="user_type" class="form-select">
+            <option value="normal">Normal</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Genre :</label>
+          <select name="genre" class="form-select">
+            <option value="">Choisir...</option>
+            <option value="Homme">Homme</option>
+            <option value="Femme">Femme</option>
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Date de naissance :</label>
+          <input type="date" name="date_naissance" class="form-control">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Jours de validité :</label>
+          <input type="number" name="valid_days" class="form-control" value="365" min="1">
+        </div>
+      </div>
+
+      <div class="method-choice-container">
+        <div class="mb-3">
+          <label class="form-label">Méthode de photo :</label>
+          <select class="form-select" id="photoChoice" onchange="handlePhotoChoice()" required>
+            <option value="">-- Choisir une option --</option>
+            <option value="file">📁 Parcourir depuis fichiers</option>
+            <option value="camera">📷 Capturer avec caméra</option>
+          </select>
+        </div>
+
+        <!-- File Upload -->
+        <div class="mb-3 d-none" id="fileInputZone">
+          <label class="form-label">Photos :</label>
+          <input type="file" name="photos" id="photosInput" class="form-control" accept="image/*" multiple onchange="previewMultipleImages(event)">
+        </div>
+
+        <!-- Camera Capture Zone -->
+        <div class="mb-3 d-none" id="cameraZone">
+          <label class="form-label">📷 Sélectionner le type de caméra :</label>
+          
+          <div class="camera-type-selector">
+            <button type="button" class="camera-type-btn active" data-camera="esp32">
+              <i class="fas fa-mobile-alt"></i> ESP32/IP Camera
+            </button>
+            <button type="button" class="camera-type-btn" data-camera="hikvision">
+              <i class="fas fa-video"></i> Hikvision RTSP
+            </button>
+          </div>
+
+          <!-- ESP32 Camera -->
+          <div class="camera-view" id="esp32View">
+            <div class="camera-container">
+              <img id="esp32Preview" src="" alt="Caméra ESP32" class="camera-stream">
+            </div>
+            <button type="button" class="btn btn-outline-primary w-100" onclick="captureFromCamera('esp32')">
+              📸 Capturer depuis ESP32
+            </button>
+          </div>
+
+          <!-- Hikvision Camera -->
+          <div class="camera-view d-none" id="hikvisionView">
+            <div class="camera-container">
+              <img id="hikvisionPreview" src="/video_feed_rtsp" alt="Caméra Hikvision" class="camera-stream">
+            </div>
+            <button type="button" class="btn btn-outline-primary w-100" onclick="captureFromCamera('hikvision')">
+              📸 Capturer depuis Hikvision
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Aperçu des images :</label>
+        <div class="image-preview-container" id="imagePreviewContainer"></div>
+      </div>
+
+      <div class="d-grid gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+        <a href="/controle" class="btn btn-outline-success">Revenir à la caméra</a>
+      </div>
+    </form>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  let ipWebcamURL = "";
+  let esp32StreamInterval = null;
+  
+  // Configuration par défaut
+  const CONFIG = {
+    device_ip: "10.0.124.55",
+    username: "admin",
+    password: "Eni20230",
+    port: 80
+  };
+
+  // Fetch ESP32 Camera URL
+  async function fetchCameraURL() {
+    try {
+      const response = await fetch("/get_ip");
+      const data = await response.json();
+      ipWebcamURL = "http://" + data.ip + "/shot.jpg";
+      console.log("IP récupérée :", ipWebcamURL);
+    } catch (error) {
+      console.error("Erreur lors de la récupération de l'URL de la caméra :", error);
+    }
+  }
+
+  const photoChoice = document.getElementById("photoChoice");
+  const fileInputZone = document.getElementById("fileInputZone");
+  const cameraZone = document.getElementById("cameraZone");
+  const esp32Preview = document.getElementById("esp32Preview");
+  const hikvisionPreview = document.getElementById("hikvisionPreview");
+  const previewContainer = document.getElementById("imagePreviewContainer");
+  const photosInput = document.getElementById("photosInput");
+
+  // Handle photo method choice
+  async function handlePhotoChoice() {
+    const choice = photoChoice.value;
+    fileInputZone.classList.add("d-none");
+    cameraZone.classList.add("d-none");
+
+    if (choice === "file") {
+      fileInputZone.classList.remove("d-none");
+    } else if (choice === "camera") {
+      cameraZone.classList.remove("d-none");
+      await fetchCameraURL();
+      
+      // Start ESP32 stream by default
+      document.querySelector('.camera-type-btn[data-camera="esp32"]').click();
+    }
+  }
+
+  // Camera type selector
+  document.querySelectorAll('.camera-type-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      // Remove active from all buttons
+      document.querySelectorAll('.camera-type-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+
+      const cameraType = this.dataset.camera;     
+      // Hide all camera views
+      document.getElementById('esp32View').classList.add('d-none');
+      document.getElementById('hikvisionView').classList.add('d-none');
+
+      // Show selected camera view
+      if (cameraType === 'esp32') {
+        document.getElementById('esp32View').classList.remove('d-none');
+        startEsp32Stream();
+      } else if (cameraType === 'hikvision') {
+        document.getElementById('hikvisionView').classList.remove('d-none');
+        stopEsp32Stream();
+        // Hikvision stream is automatic via /video_feed_rtsp
+      }
+    });
+  });
+
+  // ESP32 Stream
+  function startEsp32Stream() {
+    stopEsp32Stream();
+    if (ipWebcamURL) {
+      esp32StreamInterval = setInterval(() => {
+        esp32Preview.src = ipWebcamURL + "?rand=" + Math.random();
+      }, 500);
+    }
+  }
+
+  function stopEsp32Stream() {
+    if (esp32StreamInterval) {
+      clearInterval(esp32StreamInterval);
+      esp32StreamInterval = null;
+    }
+  }
+
+  // Capture from camera
+  function captureFromCamera(cameraType) {
+    let sourceImg;
+    
+    if (cameraType === 'esp32') {
+      sourceImg = esp32Preview;
+    } else if (cameraType === 'hikvision') {
+      sourceImg = hikvisionPreview;
+    }
+
+    if (!sourceImg) {
+      alert('Erreur: Source caméra non trouvée');
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = sourceImg.naturalWidth || 640;
+    canvas.height = sourceImg.naturalHeight || 480;
+    const ctx = canvas.getContext("2d");
+    
+    try {
+      ctx.drawImage(sourceImg, 0, 0);
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          alert('Erreur lors de la capture de l\'image');
+          return;
+        }
+
+        const file = new File([blob], `capture_${cameraType}_${Date.now()}.png`, { type: 'image/png' });
+        const dataTransfer = new DataTransfer();
+        
+        // Add existing files
+        for (let i = 0; i < photosInput.files.length; i++) {
+          dataTransfer.items.add(photosInput.files[i]);
+        }
+        
+        // Add new capture
+        dataTransfer.items.add(file);
+        photosInput.files = dataTransfer.files;
+
+        // Add to preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const previewImg = document.createElement('img');
+          previewImg.src = e.target.result;
+          previewContainer.appendChild(previewImg);
+        };
+        reader.readAsDataURL(file);
+
+        alert(`✅ Photo capturée depuis ${cameraType === 'esp32' ? 'ESP32' : 'Hikvision'}!`);
+      }, 'image/png');
+    } catch (error) {
+      console.error('Capture error:', error);
+      alert('❌ Erreur lors de la capture: ' + error.message);
+    }
+  }
+
+  // Preview multiple images from file input
+  function previewMultipleImages(event) {
+    previewContainer.innerHTML = "";
+    const files = event.target.files;
+    for (let i = 0; i < files.length; i++) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        previewContainer.appendChild(img);
+      };
+      reader.readAsDataURL(files[i]);
+    }
+  }
+
+  // Amélioration: Soumettre le formulaire avec AJAX via la nouvelle API CRUD
+  document.querySelector('form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    try {
+      // Ajouter les paramètres de configuration Hikvision
+      formData.append('device_ip', CONFIG.device_ip);
+      formData.append('username', CONFIG.username);
+      formData.append('password', CONFIG.password);
+      formData.append('port', CONFIG.port);
+      
+      const response = await fetch('/api/users/add', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        alert(`✅ ${data.message}\nMongoDB ID: ${data.details.mongodb_id}`);
+        // Rediriger vers la page de liste
+        window.location.href = '/user_detail7';
+      } else {
+        alert(`❌ Erreur: ${data.message}\n${JSON.stringify(data.details)}`);
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert(`❌ Erreur lors de la soumission: ${error.message}`);
+    }
+  });
+
+  // Initialize on page load
+  document.addEventListener("DOMContentLoaded", async () => {
+    await fetchCameraURL();
+  });
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    stopEsp32Stream();
+  });
+</script>
+
+</body>
+</html>

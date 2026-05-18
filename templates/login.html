@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Connexion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .login-card {
+      background: #fff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    h4 {
+      color: #0d6efd;
+      margin-bottom: 25px;
+      font-weight: bold;
+    }
+
+    .form-control {
+      border-radius: 10px;
+      padding-right: 40px; /* pour ne pas cacher le texte sous l’icône */
+    }
+
+    .btn-primary {
+      width: 100%;
+      border-radius: 10px;
+      background: #0d6efd;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background: #0b5ed7;
+    }
+
+    .form-text {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    /* Style du bouton d’affichage mot de passe */
+    .toggle-password {
+      position: absolute;
+      top: 38px;
+      right: 15px;
+      cursor: pointer;
+      width: 24px;
+      height: 24px;
+      color: #555;
+      user-select: none;
+      transition: color 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toggle-password:hover {
+      color: #0d6efd;
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-card">
+  <h4 class="text-center">🔐 Connexion</h4>
+  <form method="post" action="/login">
+    <div class="mb-3">
+      <label for="username" class="form-label">Nom d'utilisateur</label>
+      <input
+        type="text"
+        class="form-control"
+        id="username"
+        name="username"
+        placeholder="Entrez votre nom"
+        required
+      />
+    </div>
+    <div class="mb-3 position-relative">
+      <label for="password" class="form-label">Mot de passe</label>
+      <input
+        type="password"
+        class="form-control"
+        id="password"
+        name="password"
+        placeholder="********"
+        required
+      />
+      <span class="toggle-password" id="togglePassword" aria-label="Afficher le mot de passe" role="button" tabindex="0">
+        <!-- Icône œil ouvert -->
+        <svg
+          id="eyeOpen"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+        >
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+        <!-- Icône œil barré cachée -->
+        <svg
+          id="eyeClosed"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+          style="display: none"
+        >
+          <path d="M17.94 17.94L6.06 6.06" />
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Se connecter</button>
+  </form>
+  <div class="form-text">Accès réservé aux administrateurs</div>
+</div>
+
+<script>
+  const passwordInput = document.getElementById('password');
+  const togglePassword = document.getElementById('togglePassword');
+  const eyeOpen = document.getElementById('eyeOpen');
+  const eyeClosed = document.getElementById('eyeClosed');
+
+  togglePassword.addEventListener('click', () => {
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      eyeOpen.style.display = 'none';
+      eyeClosed.style.display = 'inline';
+      togglePassword.setAttribute('aria-label', 'Cacher le mot de passe');
+    } else {
+      passwordInput.type = 'password';
+      eyeOpen.style.display = 'inline';
+      eyeClosed.style.display = 'none';
+      togglePassword.setAttribute('aria-label', 'Afficher le mot de passe');
+    }
+  });
+
+  // Accessibilité clavier : toggle avec Entrée ou Espace
+  togglePassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      togglePassword.click();
+    }
+  });
+</script>
+
+</body>
+</html>
+
