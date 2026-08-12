@@ -1,6 +1,6 @@
 """from motor.motor_asyncio import AsyncIOMotorClient
 
-DATABASE_URL = "mongodb+srv://haaahiii:1234@cluster1.wmj7n.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
+DATABASE_URL = "mongodb api key"
 
 client = AsyncIOMotorClient(DATABASE_URL)
 db = client["securite_system"]
@@ -12,10 +12,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from urllib.parse import quote_plus
 from datetime import datetime
 
-#DATABASE_URL = "mongodb+srv://haaahiii:1234@cluster1.wmj7n.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
-#DATABASE_URL = "mongodb+srv://Fana_mongoDB:Fanantenana@123@cluster0.ttdkudf.mongodb.net/?appName=Cluster0"
-username = "Fana_mongoDB"
-password = "Fanantenana@123"
+username = "usernam mongoDB"
+password = "password"
 
 # Encodage du mot de passe (gère automatiquement @, $, %, etc.)
 password_encoded = quote_plus(password)
@@ -23,7 +21,7 @@ password_encoded = quote_plus(password)
 # URL MONGODB AVEC MOT DE PASSE SÉCURISÉ
 DATABASE_URL = (
     f"mongodb+srv://{username}:{password_encoded}"
-    "@cluster0.ttdkudf.mongodb.net/?retryWrites=true&w=majority"
+    "@cluster0.xxxx"
 )
 client = AsyncIOMotorClient(DATABASE_URL)
 db = client["securite_system"]
