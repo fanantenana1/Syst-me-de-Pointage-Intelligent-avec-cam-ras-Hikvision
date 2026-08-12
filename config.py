@@ -46,9 +46,9 @@ class MongoDBConfig:
     """Configuration MongoDB"""
     
     # Credentials
-    USERNAME = os.getenv("MONGO_USERNAME", "Fana_mongoDB")
-    PASSWORD = os.getenv("MONGO_PASSWORD", "Fanantenana@123")
-    CLUSTER = os.getenv("MONGO_CLUSTER", "cluster0.ttdkudf.mongodb.net")
+    USERNAME = os.getenv("MONGO_USERNAME", "nam_mongoDB")
+    PASSWORD = os.getenv("MONGO_PASSWORD", "******")
+    CLUSTER = os.getenv("MONGO_CLUSTER", "cluster0.xxxxxxx")
     
     # Database
     DATABASE = os.getenv("MONGO_DATABASE", "securite_system")
@@ -184,9 +184,9 @@ class CloudinaryConfig:
     """Configuration Cloudinary pour les photos"""
     
     ENABLED = True
-    CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "dold0f7np")
-    API_KEY = os.getenv("CLOUDINARY_API_KEY", "831495674953395")
-    API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "JseXluM2-m4f_Hw9XdCqZ2RJliQ")
+    CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "nam_cloud")
+    API_KEY = os.getenv("CLOUDINARY_API_KEY", "*********")
+    API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "*******")
     
     # Configuration upload
     UPLOAD_FOLDER = "faces"
@@ -291,7 +291,7 @@ class ConfigManager:
         password_encoded = quote_plus(self.mongodb.PASSWORD)
         url = (
             f"mongodb+srv://{self.mongodb.USERNAME}:{password_encoded}"
-            f"@{self.mongodb.CLUSTER}/?retryWrites=true&w=majority"
+            f"@{self.mongodb.CLUSTER}****************"
         )
         return url
     
